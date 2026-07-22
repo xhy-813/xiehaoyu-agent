@@ -3,6 +3,8 @@
 Kept small, high-quality, and covering: 时间过滤 / 聚合 / 排序 top-N / join / 分类翻译。
 """
 
+from __future__ import annotations
+
 FEW_SHOTS: list[dict] = [
     {
         "q": "2018 年每月的订单数",

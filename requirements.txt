@@ -1,0 +1,11 @@
+streamlit>=1.32
+langgraph>=0.0.40
+langchain-core>=0.1.40
+openai>=1.20
+chromadb>=0.4.24
+sentence-transformers>=2.5
+sqlparse>=0.4
+sqlalchemy>=2.0
+pandas>=2.1
+plotly>=5.20
+python-dotenv>=1.0

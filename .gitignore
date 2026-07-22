@@ -1,0 +1,31 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+
+# IDE
+.vscode/
+.idea/
+
+# Env & secrets
+.env
+.env.local
+
+# Data & models
+*.db
+*.sqlite
+*.sqlite3
+rag/data/chroma/
+chatbi/data/*.db
+Xiehaoyu-Agent/archive/
+Xiehaoyu-Agent/archive.zip
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log

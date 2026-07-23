@@ -14,7 +14,7 @@ class Settings:
     deepseek_base_url: str = os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com")
     deepseek_model: str = os.getenv("DEEPSEEK_MODEL", "deepseek-v4-flash")
     access_code: str = os.getenv("ACCESS_CODE", "")
-    session_hourly_quota: int = 20
+    session_hourly_quota: int = 50
     max_agent_steps: int = 5
     sql_retry_max: int = 3
 

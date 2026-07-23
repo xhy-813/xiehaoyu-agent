@@ -9,95 +9,209 @@ import streamlit as st
 from configs.settings import settings
 from ui.auth import check_access
 from ui.chat import render_chat
-from ui.trace import render_chart, render_data, render_trace
+from ui.trace import render_chart, render_data, render_summary, render_trace
 
 
 _CUSTOM_CSS = """
 <style>
-/* 隐藏默认 header 和 footer */
 #MainMenu {visibility: hidden;}
 footer {visibility: hidden;}
 header[data-testid="stHeader"] {background: transparent;}
 
-/* 主容器宽度 */
 section[data-testid="stMain"] > div {
-    padding-top: 1rem;
+    padding-top: 0.5rem;
 }
 
-/* 标题样式 */
-h1 {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    font-weight: 700;
+html, body, [class*="css"] {
+    font-family: "Inter", "Segoe UI", sans-serif;
 }
 
-/* Tab 样式 */
-.stTabs [data-baseweb="tab-list"] {
-    gap: 8px;
-}
-.stTabs [data-baseweb="tab"] {
-    padding: 8px 16px;
-    border-radius: 8px 8px 0 0;
+[data-testid="stSidebar"] {
+    background: #f8fafc;
+    border-right: 1px solid #e2e8f0;
 }
 
-/* 聊天消息圆角 */
+.block-container {
+    max-width: 1400px;
+}
+
+h1, h2, h3 {
+    color: #0f172a;
+    letter-spacing: 0;
+}
+
 [data-testid="stChatMessage"] {
-    border-radius: 12px;
-    padding: 12px 16px;
-}
-
-/* 侧边栏 */
-section[data-testid="stSidebar"] {
-    background: linear-gradient(180deg, #f8f9fa 0%, #e9ecef 100%);
-}
-
-/* 按钮样式 */
-.stButton > button {
+    border: 1px solid #e2e8f0;
     border-radius: 8px;
-    font-weight: 500;
+    padding: 0.8rem 1rem;
+    background: #ffffff;
 }
 
-/* expander 样式 */
-.streamlit-expanderHeader {
-    font-size: 14px;
+[data-testid="stChatMessageAvatarUser"] + [data-testid="stChatMessageContent"] {
+    background: #eff6ff;
+    border-radius: 8px;
+    padding: 0.6rem 0.8rem;
+}
+
+.stButton > button {
+    min-height: 2.2rem;
+    padding: 0.35rem 0.8rem;
+    border-radius: 8px;
+    border: 1px solid #cbd5e1;
+    background: #f8fafc;
+    color: #0f172a;
     font-weight: 500;
+    font-size: 0.88rem;
+    box-shadow: none;
+}
+
+.stButton > button:hover {
+    background: #f1f5f9;
+    border-color: #94a3b8;
+}
+
+.stButton > button[kind="primary"] {
+    background: #2563eb;
+    border-color: #2563eb;
+    color: #ffffff;
+}
+
+.stButton > button[kind="primary"]:hover {
+    background: #1d4ed8;
+    border-color: #1d4ed8;
+}
+
+[data-testid="stChatInput"] textarea,
+[data-testid="stChatInput"] input {
+    border-radius: 8px !important;
+    border: 1px solid #cbd5e1 !important;
+    background: #ffffff !important;
+    padding-top: 0.5rem !important;
+    padding-bottom: 0.5rem !important;
+    font-size: 0.92rem !important;
+}
+
+[data-testid="stChatInput"] textarea::placeholder,
+[data-testid="stChatInput"] input::placeholder {
+    color: #94a3b8 !important;
+}
+
+.stTabs [data-baseweb="tab-list"] {
+    gap: 6px;
+}
+
+@media (max-width: 900px) {
+    .block-container {
+        padding-left: 0.7rem;
+        padding-right: 0.7rem;
+        padding-top: 0.35rem;
+    }
+
+    [data-testid="stHorizontalBlock"] {
+        flex-direction: column !important;
+        gap: 0.65rem !important;
+    }
+
+    [data-testid="stHorizontalBlock"] > div {
+        width: 100% !important;
+        min-width: 0 !important;
+        flex: 1 1 100% !important;
+    }
+
+    h1 {
+        font-size: 1.45rem !important;
+        line-height: 1.25 !important;
+        margin-bottom: 0.25rem !important;
+    }
+
+    .stButton > button {
+        min-height: 2.05rem;
+        font-size: 0.84rem;
+        padding: 0.32rem 0.65rem;
+    }
+
+    [data-testid="stChatInput"] textarea,
+    [data-testid="stChatInput"] input {
+        font-size: 0.88rem !important;
+        padding-top: 0.44rem !important;
+        padding-bottom: 0.44rem !important;
+    }
+
+    .summary-metric {
+        padding: 0.46rem 0.52rem;
+    }
+
+    .summary-label {
+        font-size: 0.72rem;
+    }
+
+    .summary-value {
+        font-size: 0.86rem;
+    }
+}
+
+
+
+.stTabs [data-baseweb="tab"] {
+    border-radius: 8px 8px 0 0;
+    padding: 0.45rem 0.8rem;
+}
+
+.result-shell {
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 0.8rem;
+    background: #ffffff;
+}
+
+.summary-metric {
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 0.55rem 0.7rem;
+    background: #f8fafc;
+}
+
+.summary-label {
+    color: #64748b;
+    font-size: 0.78rem;
+    margin-bottom: 0.15rem;
+}
+
+.summary-value {
+    color: #0f172a;
+    font-size: 0.95rem;
+    font-weight: 600;
 }
 </style>
 """
 
 
 def _render_sidebar() -> None:
-    """渲染侧边栏：用户状态、剩余配额、清除对话。"""
+    """Render sidebar status and actions."""
     with st.sidebar:
-        st.markdown("### 🤖 Xiehaoyu-Agent")
+        st.markdown("### Xiehaoyu-Agent")
+        st.caption("Personal Agent + ChatBI")
 
-        # 配额信息
         now = time.time()
         timestamps = st.session_state.get("query_timestamps", [])
         cutoff = now - 3600
         used = len([t for t in timestamps if t > cutoff])
-        remaining = settings.session_hourly_quota - used
+        remaining = max(0, settings.session_hourly_quota - used)
 
-        st.metric("剩余配额", f"{remaining} / {settings.session_hourly_quota}", "次/小时")
-        st.caption(f"Agent 最大步数: {settings.max_agent_steps} ｜ SQL 重试: {settings.sql_retry_max}")
+        with st.container(border=True):
+            st.markdown("**Session Status**")
+            st.metric("剩余配额", f"{remaining}/{settings.session_hourly_quota}", "次/小时")
+            st.caption(f"Agent 步数上限: {settings.max_agent_steps}")
+            st.caption(f"SQL 重试上限: {settings.sql_retry_max}")
 
-        st.divider()
-
-        # 对话管理
-        st.markdown("#### 对话管理")
-        if st.button("🗑️ 清除对话", use_container_width=True):
+        st.markdown("**对话操作**")
+        if st.button("清空当前对话", use_container_width=True):
             st.session_state["messages"] = []
             st.session_state["last_result"] = None
             st.rerun()
 
         st.divider()
-
-        # 关于
-        st.caption(
-            "基于 LangGraph + DeepSeek + ChromaDB\n\n"
-            "© 2026 谢浩宇"
-        )
+        st.caption("LangGraph · DeepSeek · ChromaDB · Streamlit")
 
 
 def main() -> None:
@@ -110,47 +224,38 @@ def main() -> None:
 
     st.markdown(_CUSTOM_CSS, unsafe_allow_html=True)
 
-    # 访问码校验
     if not check_access():
         return
 
-    # 侧边栏
     _render_sidebar()
 
-    # 主页标题
-    st.markdown("# 🤖 Xiehaoyu-Agent")
-    st.caption("基于 LLM Agent 的个人智能体与 ChatBI 系统 ｜ 问我任何关于谢浩宇或 Olist 电商数据的问题")
+    st.title("Xiehaoyu-Agent")
+    st.caption("面向面试场景的个人智能体与数据问答工作台")
 
-    # 左右分栏
-    col_chat, col_side = st.columns([3, 2])
+    col_chat, col_side = st.columns([5, 4], gap="medium")
 
     with col_chat:
         render_chat()
 
     with col_side:
-        st.markdown("#### 📊 结果面板")
-        tab_data, tab_chart, tab_trace = st.tabs(["📋 Data", "📈 Chart", "🔍 Trace"])
         result = st.session_state.get("last_result")
+        trace = result.get("trace", []) if result else []
 
-        if result:
-            trace = result.get("trace", [])
+        with st.expander("结果面板（可展开）", expanded=False):
+            st.markdown('<div class="result-shell">', unsafe_allow_html=True)
+            render_summary(trace)
+
+            tab_data, tab_chart, tab_trace = st.tabs(["Data", "Chart", "Trace"])
             with tab_data:
                 render_data(trace)
             with tab_chart:
                 render_chart(trace)
             with tab_trace:
                 render_trace(trace)
-        else:
-            with tab_data:
-                st.markdown("### 📋 数据")
-                st.info("暂无数据\n\n提问数据相关问题后，查询结果将在此展示。")
-            with tab_chart:
-                st.markdown("### 📈 图表")
-                st.info("暂无图表\n\n提问需要可视化的问题后，图表将在此展示。")
-            with tab_trace:
-                st.markdown("### 🔍 执行轨迹")
-                st.info("暂无轨迹\n\n提问后，Agent 的思考过程将在此展示。")
+            st.markdown("</div>", unsafe_allow_html=True)
+
 
 
 if __name__ == "__main__":
     main()
+

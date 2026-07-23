@@ -98,17 +98,16 @@ Chroma      SQLite       Plotly
 - 语料来源：`career/`、`school/`、`work/`、`projects/`、`tech/` 下所有 md
 - 切片策略：按 markdown H2/H3 切，或固定 500 字 + overlap 50
 
-#### Tool 2: `query_data(question: str, history_sql: list = None)`
+#### Tool 2: `query_data(question: str)`
 
-- 输入：自然语言数据问题（+ 历史 SQL，用于多轮追问）
+- 输入：自然语言数据问题
 - 流程（Text2SQL 工程化）：
-  1. **Schema Linking**：把 question 与所有表名/列名做嵌入相似度，取 top-3 表的 schema
-  2. **Few-shot Prompt**：内置 5 个高质量 (question, SQL) 示例
-  3. LLM 生成 SQL
-  4. **SQL 校验**：sqlparse 语法检查 + 只允许 SELECT（防注入）
-  5. 执行 SQL
-  6. **失败重试**：若报错，把错误信息 + 原 SQL 反馈给 LLM 重写，最多 3 轮
-- 输出：SQL 字符串 + 结果 DataFrame + 执行耗时
+  1. **完整 Schema Prompt**：把 9 张表完整 schema 描述 + 5 个 few-shot 示例一起给 LLM（未做 schema linking 筛选，数据量不大时全量给效果更好）
+  2. LLM 生成 SQL
+  3. **SQL 校验**：sqlparse 语法检查 + 只允许 SELECT（防注入）
+  4. 执行 SQL
+  5. **失败重试**：若报错，把错误信息 + 原 SQL 反馈给 LLM 重写，最多 3 轮
+- 输出：SQL 字符串 + 结果 DataFrame + 执行耗时 + 重试 trace
 
 #### Tool 3: `visualize(df: DataFrame, question: str)`
 
@@ -185,6 +184,10 @@ me-agent/                    # 仓库目录名保留小写 kebab-case
 │   └── explain.md
 ├── configs/
 │   └── settings.py           # API key、模型名、限流参数
+├── docs/
+│   └── superpowers/
+│       ├── specs/            # 设计文档
+│       └── plans/            # 实施计划
 ├── tests/
 │   ├── test_text2sql.py      # Text2SQL 准确率评测（50 题）
 │   └── test_rag.py
@@ -222,56 +225,56 @@ python-dotenv>=1.0
 
 ### Day 1：环境 & 数据准备
 
-- [ ] 建 GitHub 仓 `me-agent`，初始化 README、.gitignore（`.env`、`data/`、`__pycache__`）
-- [ ] 建 Python venv，安装 requirements
-- [ ] Kaggle 下载 [Olist 数据集](https://www.kaggle.com/datasets/olistbr/brazilian-ecommerce)
-- [ ] 写脚本把 9 个 CSV 导入 `chatbi/data/olist.db`（SQLite）
-- [ ] 在 SQLite 里补充表关系注释，导出 schema 描述到 `chatbi/schema.py`
+- [x] 建 GitHub 仓 `me-agent`，初始化 README、.gitignore（`.env`、`data/`、`__pycache__`）
+- [x] 建 Python venv，安装 requirements
+- [x] Kaggle 下载 [Olist 数据集](https://www.kaggle.com/datasets/olistbr/brazilian-ecommerce)
+- [x] 写脚本把 9 个 CSV 导入 `chatbi/data/olist.db`（SQLite）
+- [x] 在 SQLite 里补充表关系注释，导出 schema 描述到 `chatbi/schema.py`
 
-- **验收**：`sqlite3 olist.db "select count(*) from orders"` 能出结果
+- **验收**：`sqlite3 olist.db "select count(*) from orders"` 能出结果 ✅ 99441 行
 
 ### Day 2：Text2SQL Tool（核心）
 
-- [ ] 写 `prompts/text2sql.md`：包含 schema、5 个 few-shot、输出格式约束
-- [ ] 写 `chatbi/validator.py`：sqlparse 校验 + 只允许 SELECT
-- [ ] 写 `agent/tools/query_data.py`：调 LLM → 校验 → 执行 → 失败重试（最多 3 轮）
-- [ ] 手写 5 个测试 case 跑通
+- [x] 写 `prompts/text2sql.md`：包含 schema、5 个 few-shot、输出格式约束
+- [x] 写 `chatbi/validator.py`：sqlparse 校验 + 只允许 SELECT
+- [x] 写 `agent/tools/query_data.py`：调 LLM → 校验 → 执行 → 失败重试（最多 3 轮）
+- [x] 手写 5 个测试 case 跑通
 
-- **验收**："2018 年每月订单数" 能正确返回 DataFrame
+- **验收**："2018 年每月订单数" 能正确返回 DataFrame ✅ 5/5 通过
 
 ### Day 3：Visualize + Explain Tool
 
-- [ ] 写 `agent/tools/visualize.py`：根据 df shape/dtype 自动选图
-- [ ] 写 `agent/tools/explain_result.py`：LLM 解读结果
+- [x] 写 `agent/tools/visualize.py`：根据 df shape/dtype 自动选图
+- [x] 写 `agent/tools/explain_result.py`：LLM 解读结果
 
-- **验收**：给定 df 能画出合适图 + 输出中文解读
+- **验收**：给定 df 能画出合适图 + 输出中文解读 ✅ 4/4 通过
 
 ### Day 4：RAG（介绍我自己）Tool
 
-- [ ] 写 `rag/ingest.py`：扫 `career/`、`school/`、`work/`、`projects/`、`tech/` 下 md，按 H2 切片
-- [ ] 用 BGE-small-zh 嵌入，入 Chroma
-- [ ] 写 `rag/retriever.py`：top-5 检索封装
-- [ ] 写 `prompts/system_persona.md`：核心人设 + 边界（拒答 `secrets/`）
-- [ ] 写 `agent/tools/introduce_me.py`
+- [x] 写 `rag/ingest.py`：扫 `career/`、`school/`、`work/`、`projects/`、`tech/` 下 md，按 H1/H2/H3 切片（800 字硬切 + overlap 80）
+- [x] 用 BGE-small-zh 嵌入，入 Chroma（67 文件 → 1679 chunks）
+- [x] 写 `rag/retriever.py`：top-5 检索封装
+- [x] 写 `prompts/system_persona.md`：核心人设 + 边界（拒答 `secrets/`）
+- [x] 写 `agent/tools/introduce_me.py`
 
-- **验收**："介绍一下你自己"、"你 K12 项目做了什么" 能给出合理回答且带引用
+- **验收**："介绍一下你自己"、"你 K12 项目做了什么" 能给出合理回答且带引用 ✅ 4/4 通过
 
 ### Day 5：Agent 编排（LangGraph）
 
-- [ ] 写 `agent/planner.py`：让 LLM 输出 JSON `{action, tool, args}` 或 `{action: "finalize", answer}`
-- [ ] 写 `agent/graph.py`：LangGraph 状态机，节点循环最多 5 步
-- [ ] 端到端跑通：CLI 输入问题 → 输出答案 + 轨迹
+- [x] 写 `agent/planner.py`：让 LLM 输出 JSON `{action, tool, args}` 或 `{action: "finalize", answer}`
+- [x] 写 `agent/graph.py`：LangGraph 状态机，节点循环最多 5 步
+- [x] 端到端跑通：CLI 输入问题 → 输出答案 + 轨迹
 
-- **验收**：3 类问题（纯介绍、纯查数、混合）都能走通并输出正确 tool 调用序列
+- **验收**：3 类问题（纯介绍、纯查数、混合）都能走通并输出正确 tool 调用序列 ✅ 3/3 通过
 
 ### Day 6：Streamlit UI
 
-- [ ] `app.py`：登录页（访问码校验）→ 主页
-- [ ] 主页：左边 chat，右边 3 个 Tab（Data / Chart / Trace）
-- [ ] 每轮对话展示 agent 轨迹（thought / tool / observation 折叠卡片）
-- [ ] session 限流：每 session 每小时 20 次
+- [x] `app.py`：登录页（访问码校验）→ 主页
+- [x] 主页：左边 chat，右边 3 个 Tab（Data / Chart / Trace）
+- [x] 每轮对话展示 agent 轨迹（thought / tool / observation 折叠卡片）
+- [x] session 限流：每 session 每小时 20 次
 
-- **验收**：本地 `streamlit run app.py` 完整体验
+- **验收**：本地 `streamlit run app.py` 完整体验 ✅
 
 ### Day 7：评测 & 打磨
 
@@ -363,7 +366,10 @@ A: SELECT strftime('%Y-%m', order_purchase_timestamp) AS m, COUNT(*) AS cnt
 
 ## 踩坑记录
 
-<!-- 开发中补充 -->
+- **PowerShell stderr 误报**：Python 脚本的 stderr 输出（如 `warnings.warn()`、HF Hub 提示）在 PowerShell 中被当作 `NativeCommandError`，导致 exit code 1。实际脚本执行成功。需注意区分真错误和 stderr 警告。
+- **transformers 5.x 的 torchvision 依赖**：`transformers>=5.0` 的 `zoedepth` 模块懒加载 `torchvision`，若未安装会在 Streamlit 热重载时报 `ModuleNotFoundError: No module named 'torchvision'`。不影响 Agent 正常运行，但日志会有噪声。
+- **ChromaDB 1.5.9 + sentence-transformers 5.6.0**：新版 ChromaDB API 有变化，`embedding_functions.SentenceTransformerEmbeddingFunction` 仍兼容但首次加载需下载 BGE 模型（约 95MB）。
+- **agent trace artifact 扩展**：Day 6 需要在 UI 展示完整 DataFrame 和 Plotly figure，但原 trace 只有 summary 文本。通过在 `_run_tool` 中添加 `artifact` 字段解决，不改变 `run()` 返回签名。
 
 ## 复盘
 
@@ -372,6 +378,10 @@ A: SELECT strftime('%Y-%m', order_purchase_timestamp) AS m, COUNT(*) AS cnt
 ## 时间线
 
 - 2026-07-21：立项，方案确定
+- 2026-07-22：Day 1-2 完成（数据准备 + Text2SQL）
+- 2026-07-22：Day 3-4 完成（Visualize/Explain + RAG）
+- 2026-07-22：Day 5 完成（LangGraph Agent 编排）
+- 2026-07-23：Day 6 完成（Streamlit UI + 优化）
 - MVP 目标：2026-08-04 前完成部署上线
 - 迭代计划：秋招前（2026-09）持续打磨
 

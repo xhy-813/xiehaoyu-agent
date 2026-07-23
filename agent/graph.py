@@ -64,12 +64,14 @@ def _run_tool(tool: str, args: dict, state: AgentState) -> dict:
 
     if tool == "introduce_me":
         r = introduce_me(question)
-        return {"trace": trace + [{"tool": tool, "args": args, "summary": _summarize(tool, r)}]}
+        artifact = {"answer": r.answer, "citations": r.citations}
+        return {"trace": trace + [{"tool": tool, "args": args, "summary": _summarize(tool, r), "artifact": artifact}]}
 
     if tool == "query_data":
         r = query_data(question)
+        artifact = {"sql": r.sql, "df": r.df}
         return {
-            "trace": trace + [{"tool": tool, "args": args, "summary": _summarize(tool, r)}],
+            "trace": trace + [{"tool": tool, "args": args, "summary": _summarize(tool, r), "artifact": artifact}],
             "last_df": r.df,
             "last_sql": r.sql,
         }
@@ -77,17 +79,19 @@ def _run_tool(tool: str, args: dict, state: AgentState) -> dict:
     if tool == "visualize":
         df = state.get("last_df")
         if df is None:
-            return {"trace": trace + [{"tool": tool, "args": args, "summary": "错误: 没有数据，请先调用 query_data"}]}
+            return {"trace": trace + [{"tool": tool, "args": args, "summary": "错误: 没有数据，请先调用 query_data", "artifact": None}]}
         r = visualize(df, question)
-        return {"trace": trace + [{"tool": tool, "args": args, "summary": _summarize(tool, r)}]}
+        artifact = {"figure": r.figure, "chart_type": r.chart_type}
+        return {"trace": trace + [{"tool": tool, "args": args, "summary": _summarize(tool, r), "artifact": artifact}]}
 
     if tool == "explain_result":
         df = state.get("last_df")
         sql = state.get("last_sql", "")
         if df is None:
-            return {"trace": trace + [{"tool": tool, "args": args, "summary": "错误: 没有数据，请先调用 query_data"}]}
+            return {"trace": trace + [{"tool": tool, "args": args, "summary": "错误: 没有数据，请先调用 query_data", "artifact": None}]}
         r = explain_result(question, sql, df)
-        return {"trace": trace + [{"tool": tool, "args": args, "summary": _summarize(tool, r)}]}
+        artifact = {"insight": r}
+        return {"trace": trace + [{"tool": tool, "args": args, "summary": _summarize(tool, r), "artifact": artifact}]}
 
     raise ValueError(f"Unknown tool: {tool}")
 

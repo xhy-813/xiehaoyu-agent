@@ -17,6 +17,9 @@ class Settings:
     session_hourly_quota: int = 50
     max_agent_steps: int = 5
     sql_retry_max: int = 3
+    jwt_secret: str = os.getenv("JWT_SECRET", "change-me-in-production-use-a-long-random-string-here")
+    jwt_expire_hours: int = 24
+    cors_origins: str = os.getenv("CORS_ORIGINS", "http://localhost:5173")
 
 
 settings = Settings()

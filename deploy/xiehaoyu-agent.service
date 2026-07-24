@@ -1,0 +1,19 @@
+[Unit]
+Description=Xiehaoyu-Agent Backend
+After=network.target
+
+[Service]
+Type=simple
+User=www-data
+WorkingDirectory=/srv/xiehaoyu-agent
+Environment=PATH=/srv/xiehaoyu-agent/.venv/bin:/usr/local/bin:/usr/bin:/bin
+ExecStart=/srv/xiehaoyu-agent/.venv/bin/uvicorn backend.app.main:app --host 127.0.0.1 --port 8000 --workers 1
+Restart=always
+RestartSec=3
+
+# Security hardening
+NoNewPrivileges=yes
+PrivateTmp=yes
+
+[Install]
+WantedBy=multi-user.target

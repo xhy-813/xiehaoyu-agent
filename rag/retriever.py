@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
@@ -10,6 +11,12 @@ import chromadb
 from chromadb.utils import embedding_functions
 
 from rag.ingest import COLLECTION, EMBED_MODEL
+
+
+# Prevent sentence-transformers from checking HuggingFace for config files
+# (model is already cached locally, no need to ping HF on every load)
+os.environ.setdefault("HF_HUB_OFFLINE", "1")
+os.environ.setdefault("TRANSFORMERS_OFFLINE", "1")
 
 
 DEFAULT_DB = Path(__file__).resolve().parents[1] / "rag" / "data" / "chroma"

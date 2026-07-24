@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import os
 import re
 from pathlib import Path
 from typing import Iterable
@@ -24,11 +25,17 @@ import chromadb
 from chromadb.utils import embedding_functions
 
 
+# Prevent sentence-transformers from calling HuggingFace Hub
+# (model is already cached locally)
+os.environ.setdefault("HF_HUB_OFFLINE", "1")
+os.environ.setdefault("TRANSFORMERS_OFFLINE", "1")
+
+
 INCLUDE_DIRS = {"career", "school", "work", "projects", "tech", "life", "methods", "templates"}
 EXCLUDE_DIRS = {"secrets", ".git", ".agents", ".claude", ".codex", ".workbuddy"}
 
 COLLECTION = "xhy_kb"
-EMBED_MODEL = "BAAI/bge-small-zh-v1.5"
+EMBED_MODEL = "BAAI/bge-large-zh-v1.5"
 
 MAX_CHARS = 800
 OVERLAP = 80

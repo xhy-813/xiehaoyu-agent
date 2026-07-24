@@ -12,9 +12,11 @@ planner → tool_router → tools → planner (loop, max 5) → finalize
 
 from __future__ import annotations
 
-from typing import Any, TypedDict
+import json
+from typing import Any, AsyncIterator, TypedDict
 
 import pandas as pd
+import plotly.graph_objects as go
 from langgraph.graph import END, START, StateGraph
 
 from agent.planner import plan
@@ -196,6 +198,98 @@ def build_graph():
     g.add_edge("finalize", END)
 
     return g.compile()
+
+
+# ── Serialization helpers ────────────────────────────────
+
+
+def _serialize_artifact(artifact: dict | None) -> dict | None:
+    """Convert non-serializable objects (DataFrame, Plotly Figure) to JSON-safe dict."""
+    if artifact is None:
+        return None
+
+    result = dict(artifact)
+
+    # DataFrame → JSON
+    if "df" in result:
+        df = result.pop("df")
+        if isinstance(df, pd.DataFrame):
+            result["df_json"] = df.head(500).to_json(orient="records", date_format="iso", force_ascii=False)
+            result["df_shape"] = {"rows": len(df), "cols": len(df.columns)}
+            result["df_columns"] = list(df.columns)
+
+    # Plotly Figure → JSON
+    if "figure" in result:
+        fig = result.pop("figure")
+        if isinstance(fig, go.Figure):
+            result["figure_json"] = fig.to_json()
+
+    return result
+
+
+# ── Streaming entry point ────────────────────────────────
+
+
+async def stream_run(question: str) -> AsyncIterator[dict]:
+    """Async streaming agent runner.
+
+    Uses LangGraph's built-in ``astream()`` to yield one event per node
+    execution.  Each event looks like::
+
+        {"type": "planner_decision" | "tool_end" | "final_answer",
+         "node": str,
+         "data": {...}}
+
+    The ``data`` dict for ``tool_end`` events contains the full trace entry
+    (including a serialized artifact), ready for SSE delivery.
+    """
+    app = build_graph()
+    initial_state: AgentState = {
+        "question": question,
+        "trace": [],
+        "step": 0,
+    }
+
+    async for event in app.astream(initial_state, stream_mode="updates"):
+        for node_name, state_update in event.items():
+            if node_name == "finalize":
+                yield {
+                    "type": "final_answer",
+                    "node": node_name,
+                    "data": {
+                        "answer": state_update.get("final_answer", ""),
+                        "steps": state_update.get("step", 0),
+                    },
+                }
+            elif node_name == "planner":
+                # Expose planner decisions so the frontend can show "thinking…"
+                yield {
+                    "type": "planner_decision",
+                    "node": node_name,
+                    "data": {
+                        "next_action": state_update.get("next_action", ""),
+                        "next_tool": state_update.get("next_tool", ""),
+                        "step": state_update.get("step", 0),
+                    },
+                }
+            else:
+                # Tool node: introduce_me / query_data / visualize / explain_result
+                new_trace = state_update.get("trace", [])
+                if new_trace:
+                    latest = new_trace[-1]
+                    yield {
+                        "type": "tool_end",
+                        "node": node_name,
+                        "data": {
+                            "tool": latest.get("tool", node_name),
+                            "args": latest.get("args", {}),
+                            "summary": latest.get("summary", ""),
+                            "artifact": _serialize_artifact(latest.get("artifact")),
+                        },
+                    }
+
+
+# ── Synchronous entry point (kept for backward compat) ──
 
 
 def run(question: str) -> dict:

@@ -1,0 +1,44 @@
+"""FastAPI application entry point."""
+
+from __future__ import annotations
+
+import sys
+from pathlib import Path
+
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+
+# Ensure the project root is on sys.path so agent / configs / chatbi / rag
+# can be imported from the backend sub-package.
+ROOT = Path(__file__).resolve().parents[2]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from configs.settings import settings  # noqa: E402
+from backend.app.routers import auth, chat  # noqa: E402
+
+app = FastAPI(
+    title="Xiehaoyu-Agent API",
+    description="个人智能体与 ChatBI 系统后端",
+    version="0.1.0",
+)
+
+# ── CORS (allow frontend dev server) ──────────────────────
+origins = [o.strip() for o in settings.cors_origins.split(",") if o.strip()]
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# ── Routers ───────────────────────────────────────────────
+app.include_router(auth.router)
+app.include_router(chat.router)
+
+
+@app.get("/api/health")
+async def health() -> dict:
+    """Liveness check."""
+    return {"status": "ok"}

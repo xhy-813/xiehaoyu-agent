@@ -14,6 +14,7 @@ from pathlib import Path
 
 from openai import OpenAI
 
+from agent.llm_client import get_client
 from configs.settings import settings
 from rag.retriever import Hit, retrieve
 
@@ -26,15 +27,6 @@ class IntroduceResult:
     answer: str
     citations: list[dict]  # [{source, heading, score}]
     hits: list[Hit]
-
-
-def _client() -> OpenAI:
-    if not settings.deepseek_api_key:
-        raise RuntimeError("DEEPSEEK_API_KEY not set in .env")
-    return OpenAI(
-        api_key=settings.deepseek_api_key,
-        base_url=settings.deepseek_base_url,
-    )
 
 
 def _format_context(hits: list[Hit]) -> str:
@@ -69,14 +61,14 @@ def introduce_me(question: str, top_k: int = 10) -> IntroduceResult:
         f"【用户问题】\n{question}"
     )
 
-    client = _client()
+    client = get_client()
     resp = client.chat.completions.create(
         model=settings.deepseek_model,
         messages=[
             {"role": "system", "content": persona},
             {"role": "user", "content": user_prompt},
         ],
-        temperature=0.3,
+        temperature=settings.rag_temperature,
     )
     answer = (resp.choices[0].message.content or "").strip()
     citations = [

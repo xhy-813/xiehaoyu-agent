@@ -5,11 +5,11 @@
       <n-avatar v-if="message.role === 'user'" :size="34" round :style="{ background: 'linear-gradient(135deg, #6366f1, #818cf8)' }">
         <n-icon size="18"><svg viewBox="0 0 24 24"><path fill="currentColor" d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg></n-icon>
       </n-avatar>
-      <div v-else class="ai-avatar">
-        <n-icon size="20" color="#63e2b7">
-          <svg viewBox="0 0 24 24"><path fill="currentColor" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/></svg>
-        </n-icon>
-      </div>
+      <AnimatedAvatar
+        v-else
+        :state="avatarState"
+        :size="34"
+      />
     </div>
 
     <!-- Content -->
@@ -107,51 +107,43 @@
 
 <script setup lang="ts">
 import { computed, ref, onMounted } from 'vue'
-import MarkdownIt from 'markdown-it'
-import hljs from 'highlight.js'
-import 'highlight.js/styles/github-dark.css'
+import { useMessage } from 'naive-ui'
 import ChartRenderer from '@/components/result/ChartRenderer.vue'
+import AnimatedAvatar from '@/components/shared/AnimatedAvatar.vue'
 import type { ChatMessage } from '@/stores/chat'
-
-const TOOL_LABELS: Record<string, string> = {
-  query_data: '查询数据', visualize: '生成图表',
-  introduce_me: '检索知识库', explain_result: '解读结果',
-}
-const TAG_MAP: Record<string, 'info' | 'success' | 'warning' | 'default'> = {
-  query_data: 'info', visualize: 'success', introduce_me: 'warning', explain_result: 'default',
-}
-const STEP_COLORS: Record<string, string> = {
-  query_data: '#63a4ff', visualize: '#63e2b7', introduce_me: '#ffb74d', explain_result: '#ce93d8',
-}
-const CHART_LABELS: Record<string, string> = {
-  indicator: '指标卡', line: '折线图', bar: '柱状图', scatter: '散点图', table: '表格',
-}
-
-function toolLabel(t: string) { return TOOL_LABELS[t] || t }
-function tagType(t: string) { return TAG_MAP[t] || 'default' }
-function stepColor(t: string) { return STEP_COLORS[t] || '#888' }
+import { useChatStore } from '@/stores/chat'
+import { CHART_LABELS, toolLabel, tagType, stepColor } from '@/utils/tool-constants'
+import { renderMarkdown } from '@/utils/markdown'
+import type { AvatarState } from '@/components/shared/AnimatedAvatar.vue'
 
 const props = defineProps<{ message: ChatMessage; isStreaming?: boolean }>()
 
+const chat = useChatStore()
+
+const messageApi = useMessage()
 const animate = ref(true)
 
-const md = new MarkdownIt({
-  html: false, linkify: true, breaks: true,
-  highlight(str: string, lang: string) {
-    if (lang && hljs.getLanguage(lang)) {
-      try { return hljs.highlight(str, { language: lang }).value } catch { /* */ }
-    }
-    return ''
-  },
+const isLastAssistant = computed(() =>
+  props.message.role === 'assistant' &&
+  props.message === chat.messages[chat.messages.length - 1]
+)
+
+const avatarState = computed<AvatarState>(() => {
+  if (!isLastAssistant.value) return 'idle'
+  return chat.avatarState
 })
 
-const renderedContent = computed(() => md.render(props.message.content))
+const renderedContent = computed(() => renderMarkdown(props.message.content))
 
 function formatTime(ts: number) {
   return new Date(ts).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
 }
 async function copyContent() {
-  try { await navigator.clipboard.writeText(props.message.content) } catch { /* */ }
+  try {
+    await navigator.clipboard.writeText(props.message.content)
+  } catch {
+    messageApi.warning('复制失败，请检查浏览器权限设置')
+  }
 }
 
 // --- Result data from trace ---
@@ -201,11 +193,6 @@ onMounted(() => {
 }
 .chat-message.user { flex-direction: row-reverse; }
 .msg-avatar { flex-shrink: 0; padding-top: 2px; }
-.ai-avatar {
-  width: 34px; height: 34px; border-radius: 50%;
-  background: rgba(99, 226, 183, 0.12);
-  display: flex; align-items: center; justify-content: center;
-}
 .msg-body { flex: 1; min-width: 0; }
 .msg-role {
   font-size: 0.76rem; font-weight: 600; color: #777;

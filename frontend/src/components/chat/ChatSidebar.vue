@@ -9,11 +9,7 @@
   >
     <!-- Header -->
     <div class="sidebar-header">
-      <div class="sh-logo">
-        <n-icon size="26" color="#63e2b7">
-          <svg viewBox="0 0 24 24"><path fill="currentColor" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/></svg>
-        </n-icon>
-      </div>
+      <AnimatedAvatar state="idle" :size="40" />
       <div>
         <div class="sh-title">Xiehaoyu-Agent</div>
         <div class="sh-subtitle">个人智能体工作台</div>
@@ -34,8 +30,13 @@
             <span class="si-lbl">步骤</span>
           </div>
           <div class="status-item">
-            <span class="si-val" :style="{ color: chat.isStreaming ? '#f59e0b' : '#63e2b7' }">
-              {{ chat.isStreaming ? '●' : '●' }}
+            <span
+              class="si-val"
+              :style="{ color: chat.isStreaming ? '#f59e0b' : '#63e2b7' }"
+              :aria-label="chat.isStreaming ? '处理中' : '就绪'"
+              role="status"
+            >
+              {{ chat.isStreaming ? '◉' : '○' }}
             </span>
             <span class="si-lbl">{{ chat.isStreaming ? '处理中' : '就绪' }}</span>
           </div>
@@ -84,6 +85,7 @@
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useChatStore } from '@/stores/chat'
+import AnimatedAvatar from '@/components/shared/AnimatedAvatar.vue'
 
 defineEmits<{ close: [] }>()
 
@@ -92,6 +94,7 @@ const auth = useAuthStore()
 const chat = useChatStore()
 
 function handleLogout() {
+  chat.clearChat()
   auth.logout()
   router.push('/login')
 }
@@ -110,16 +113,6 @@ function handleLogout() {
   gap: 0.75rem;
   padding: 1.1rem 1.2rem;
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-}
-.sh-logo {
-  width: 40px;
-  height: 40px;
-  border-radius: 10px;
-  background: rgba(99, 226, 183, 0.1);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
 }
 .sh-title {
   font-size: 0.95rem;

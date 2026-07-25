@@ -37,22 +37,25 @@ async function handleSend(question: string) {
   await chat.sendMessage(question)
 }
 
-// Auto-scroll to bottom
+// Auto-scroll to bottom only when the user is already near the bottom
+// (within 100px).  This lets the user scroll up to read history during
+// streaming without being yanked back down.
+function scrollToBottomIfNear() {
+  const el = messagesRef.value
+  if (!el) return
+  const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 100
+  if (nearBottom) {
+    el.scrollTop = el.scrollHeight
+  }
+}
+
 watch(
   () => chat.messages.length,
-  () => nextTick(() => {
-    if (messagesRef.value) {
-      messagesRef.value.scrollTop = messagesRef.value.scrollHeight
-    }
-  })
+  () => nextTick(scrollToBottomIfNear)
 )
 watch(
   () => chat.currentTrace.length,
-  () => nextTick(() => {
-    if (messagesRef.value) {
-      messagesRef.value.scrollTop = messagesRef.value.scrollHeight
-    }
-  })
+  () => nextTick(scrollToBottomIfNear)
 )
 </script>
 

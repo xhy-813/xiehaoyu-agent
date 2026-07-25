@@ -11,6 +11,7 @@ export {}
 /* prettier-ignore */
 declare module 'vue' {
   export interface GlobalComponents {
+    AnimatedAvatar: typeof import('./components/shared/AnimatedAvatar.vue')['default']
     ChartRenderer: typeof import('./components/result/ChartRenderer.vue')['default']
     ChatInput: typeof import('./components/chat/ChatInput.vue')['default']
     ChatMain: typeof import('./components/chat/ChatMain.vue')['default']

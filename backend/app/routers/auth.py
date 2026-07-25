@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import secrets
 import time
 
 import jwt
@@ -16,7 +17,7 @@ router = APIRouter(prefix="/api/auth", tags=["auth"])
 @router.post("/login", response_model=TokenResponse)
 def login(body: LoginRequest) -> TokenResponse:
     """Validate access code and return a signed JWT."""
-    if body.access_code != settings.access_code:
+    if not secrets.compare_digest(body.access_code, settings.access_code):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="访问码错误",

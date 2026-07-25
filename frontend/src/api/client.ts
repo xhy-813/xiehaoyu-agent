@@ -15,12 +15,23 @@ async function request<T = unknown>(
     headers['Authorization'] = `Bearer ${auth.token}`
   }
 
-  const resp = await fetch(`${BASE}${path}`, { ...options, headers })
+  const resp = await fetch(`${BASE}${path}`, {
+    ...options,
+    headers,
+    signal: options.signal ?? AbortSignal.timeout(30000),
+  })
   if (!resp.ok) {
     const body = await resp.json().catch(() => ({}))
     const detail = (body as any).detail || resp.statusText
     const err = new Error(detail) as any
     err.status = resp.status
+
+    // Global 401 handling: clear auth and redirect to login
+    if (resp.status === 401) {
+      auth.logout()
+      window.location.href = '/login'
+    }
+
     throw err
   }
   return resp.json()

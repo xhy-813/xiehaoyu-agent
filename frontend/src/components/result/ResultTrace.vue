@@ -32,41 +32,9 @@
 
 <script setup lang="ts">
 import { useChatStore } from '@/stores/chat'
+import { toolLabel, tagType, stepColor } from '@/utils/tool-constants'
 
 const chat = useChatStore()
-
-const TOOL_LABELS: Record<string, string> = {
-  query_data: '查询数据',
-  visualize: '生成图表',
-  introduce_me: '检索知识库',
-  explain_result: '解读结果',
-}
-
-function toolLabel(tool: string) {
-  return TOOL_LABELS[tool] || tool
-}
-
-const TAG_MAP: Record<string, 'info' | 'success' | 'warning' | 'default'> = {
-  query_data: 'info',
-  visualize: 'success',
-  introduce_me: 'warning',
-  explain_result: 'default',
-}
-
-function tagType(tool: string) {
-  return TAG_MAP[tool] || 'default'
-}
-
-const STEP_COLORS: Record<string, string> = {
-  query_data: '#63a4ff',
-  visualize: '#63e2b7',
-  introduce_me: '#ffb74d',
-  explain_result: '#ce93d8',
-}
-
-function stepColor(tool: string) {
-  return STEP_COLORS[tool] || '#888'
-}
 </script>
 
 <style scoped>

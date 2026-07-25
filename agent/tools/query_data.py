@@ -10,20 +10,28 @@ from __future__ import annotations
 
 import time
 from dataclasses import dataclass, field
+from functools import lru_cache
 from pathlib import Path
 
 import pandas as pd
 from openai import OpenAI
-from sqlalchemy import create_engine, text
+from sqlalchemy import Engine, create_engine, text
 
 from chatbi.few_shots import format_few_shots
 from chatbi.schema import SCHEMA
 from chatbi.validator import SQLValidationError, validate
+from agent.llm_client import get_client
 from configs.settings import settings
 
 
 PROMPT_PATH = Path(__file__).resolve().parents[2] / "prompts" / "text2sql.md"
 DB_PATH = Path(__file__).resolve().parents[2] / "chatbi" / "data" / "olist.db"
+
+
+@lru_cache(maxsize=1)
+def _get_engine(db_path: str) -> Engine:
+    """Return a cached SQLAlchemy engine (singleton per path)."""
+    return create_engine(f"sqlite:///{db_path}")
 
 
 @dataclass
@@ -34,15 +42,6 @@ class QueryResult:
     attempts: int
     elapsed_ms: int
     trace: list[dict] = field(default_factory=list)  # 每轮 {sql, error}
-
-
-def _client() -> OpenAI:
-    if not settings.deepseek_api_key:
-        raise RuntimeError("DEEPSEEK_API_KEY not set in .env")
-    return OpenAI(
-        api_key=settings.deepseek_api_key,
-        base_url=settings.deepseek_base_url,
-    )
 
 
 def _build_prompt(question: str) -> str:
@@ -64,7 +63,7 @@ def _ask_llm(client: OpenAI, prompt: str, feedback: str | None = None) -> str:
     resp = client.chat.completions.create(
         model=settings.deepseek_model,
         messages=messages,
-        temperature=0.0,
+        temperature=settings.text2sql_temperature,
     )
     return resp.choices[0].message.content or ""
 
@@ -75,8 +74,8 @@ def query_data(
     db_path: Path | None = None,
 ) -> QueryResult:
     max_attempts = max_attempts or settings.sql_retry_max
-    engine = create_engine(f"sqlite:///{db_path or DB_PATH}")
-    client = _client()
+    engine = _get_engine(str(db_path or DB_PATH))
+    client = get_client()
     base_prompt = _build_prompt(question)
 
     trace: list[dict] = []
@@ -84,14 +83,21 @@ def query_data(
     t0 = time.time()
 
     for attempt in range(1, max_attempts + 1):
-        raw = _ask_llm(client, base_prompt, feedback)
         try:
+            raw = _ask_llm(client, base_prompt, feedback)
             sql = validate(raw)
         except SQLValidationError as e:
             trace.append({"raw": raw, "error": f"validate: {e}"})
             feedback = (
                 f"上一次输出未通过安全校验：{e}。"
                 f"原文：\n{raw}\n请重新输出一条合法的只读 SELECT SQL。"
+            )
+            continue
+        except Exception as e:  # noqa: BLE001 — LLM API errors are diverse
+            trace.append({"error": f"LLM call failed: {e}"})
+            feedback = (
+                f"上一步调用 LLM 失败：{e}\n"
+                "请重新输出一条合法的只读 SELECT SQL。"
             )
             continue
 

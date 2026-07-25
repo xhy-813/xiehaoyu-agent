@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "highlight.js": "^11.11.1",
+    "lottie-web": "^5.13.0",
     "markdown-it": "^14.3.0",
     "naive-ui": "^2.44.1",
     "pinia": "^4.0.2",

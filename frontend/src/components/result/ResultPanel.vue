@@ -1,4 +1,8 @@
 <template>
+  <!--
+    ResultPanel 目前在 ChatView 中未被引用 — 结果展示已内联到 ChatMessage.vue。
+    保留此组件以便将来可能需要独立的结果面板布局。
+  -->
   <div class="result-panel">
     <div class="panel-header">
       <n-text depth="1" strong>结果面板</n-text>

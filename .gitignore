@@ -22,6 +22,7 @@ rag/data/chroma/
 chatbi/data/*.db
 Xiehaoyu-Agent/archive/
 Xiehaoyu-Agent/archive.zip
+.chroma/
 
 # 个人知识库（内部另有 .git，不纳入本仓，仅作为 RAG 语料源）
 Xiehaoyu-Agent/个人知识库/

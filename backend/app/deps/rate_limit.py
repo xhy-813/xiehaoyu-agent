@@ -1,7 +1,8 @@
 """In-memory rate limiter (per-session hourly quota).
 
-Migrated from ``ui/auth.py`` ``check_rate_limit()``.  Uses a module-level
-dict keyed by user id ('' for anonymous).  Suitable for single-process,
+Moved from ``backend/app/middleware/`` to ``backend/app/deps/``
+because it is a plain function called imperatively, not an ASGI middleware.
+Uses a module-level dict keyed by user id.  Suitable for single-process,
 low-concurrency deployments.
 """
 
@@ -34,3 +35,7 @@ def check_rate_limit(user_id: str = "default") -> None:
             ),
         )
     bucket.append(now)
+
+    # Prune empty buckets to prevent unbounded dict growth
+    if not bucket:
+        del _hourly_buckets[user_id]

@@ -10,20 +10,12 @@ from pathlib import Path
 import pandas as pd
 from openai import OpenAI
 
+from agent.llm_client import get_client
 from configs.settings import settings
 
 
 PROMPT_PATH = Path(__file__).resolve().parents[2] / "prompts" / "explain.md"
 PREVIEW_ROWS = 20
-
-
-def _client() -> OpenAI:
-    if not settings.deepseek_api_key:
-        raise RuntimeError("DEEPSEEK_API_KEY not set in .env")
-    return OpenAI(
-        api_key=settings.deepseek_api_key,
-        base_url=settings.deepseek_base_url,
-    )
 
 
 def _preview(df: pd.DataFrame, n: int = PREVIEW_ROWS) -> str:
@@ -39,13 +31,13 @@ def explain_result(question: str, sql: str, df: pd.DataFrame) -> str:
         sql=sql,
         preview=_preview(df),
     )
-    client = _client()
+    client = get_client()
     resp = client.chat.completions.create(
         model=settings.deepseek_model,
         messages=[
             {"role": "system", "content": "你是资深数据分析师，输出简洁中文洞察。"},
             {"role": "user", "content": prompt},
         ],
-        temperature=0.3,
+        temperature=settings.explain_temperature,
     )
     return (resp.choices[0].message.content or "").strip()

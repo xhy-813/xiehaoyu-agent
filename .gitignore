@@ -19,7 +19,10 @@ env/
 *.sqlite
 *.sqlite3
 rag/data/chroma/
+rag/data/models/           # BGE 嵌入模型（~1.3GB，部署时 pip 自动下载）
 chatbi/data/*.db
+data/olist数据集/           # Olist 原始 CSV（~120MB，仅用于构建 SQLite）
+data/知识库/                # 个人知识库（含个人信息，不入公开仓库）
 Xiehaoyu-Agent/archive/
 Xiehaoyu-Agent/archive.zip
 .chroma/

@@ -10,40 +10,44 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, nextTick } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import { useChatStore } from '@/stores/chat'
 import Plotly from 'plotly.js-dist'
 
 const chat = useChatStore()
 const chartRef = ref<HTMLDivElement>()
 
-const figureJson = computed(() => {
-  for (let i = chat.currentTrace.length - 1; i >= 0; i--) {
-    const a = chat.currentTrace[i].artifact
-    if (a?.figure_json) return a.figure_json
-  }
-  return null
-})
+const figureJson = computed(() => chat.chartJson)
 
 function renderChart() {
   if (!figureJson.value || !chartRef.value) return
-  const fig = JSON.parse(figureJson.value)
-  Plotly.newPlot(chartRef.value, fig.data, fig.layout, {
-    responsive: true,
-    displayModeBar: true,
-    displaylogo: false,
-    modeBarButtonsToRemove: ['lasso2d', 'select2d', 'sendDataToCloud'],
-    paper_bgcolor: 'transparent',
-    plot_bgcolor: 'transparent',
-    font: { color: '#aaa', size: 11 },
-    margin: { t: 40, r: 20, b: 50, l: 50 },
-    xaxis: { gridcolor: 'rgba(255,255,255,0.06)', zerolinecolor: 'rgba(255,255,255,0.1)' },
-    yaxis: { gridcolor: 'rgba(255,255,255,0.06)', zerolinecolor: 'rgba(255,255,255,0.1)' },
-  })
+  try {
+    const fig = JSON.parse(figureJson.value)
+    Plotly.purge(chartRef.value)
+    Plotly.newPlot(chartRef.value, fig.data, fig.layout, {
+      responsive: true,
+      displayModeBar: true,
+      displaylogo: false,
+      modeBarButtonsToRemove: ['lasso2d', 'select2d', 'sendDataToCloud'],
+      paper_bgcolor: 'transparent',
+      plot_bgcolor: 'transparent',
+      font: { color: '#aaa', size: 11 },
+      margin: { t: 40, r: 20, b: 50, l: 50 },
+      xaxis: { gridcolor: 'rgba(255,255,255,0.06)', zerolinecolor: 'rgba(255,255,255,0.1)' },
+      yaxis: { gridcolor: 'rgba(255,255,255,0.06)', zerolinecolor: 'rgba(255,255,255,0.1)' },
+    })
+  } catch {
+    // Malformed figure JSON; leave the chart area empty.
+  }
 }
 
 watch(figureJson, () => nextTick(renderChart))
 onMounted(() => nextTick(renderChart))
+onUnmounted(() => {
+  if (chartRef.value) {
+    Plotly.purge(chartRef.value)
+  }
+})
 </script>
 
 <style scoped>

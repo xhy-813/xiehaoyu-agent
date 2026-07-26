@@ -8,7 +8,7 @@
 - 扫描以下顶层目录下所有 .md（大小写不敏感）：career, school, work, projects, tech, life, methods, templates
 - 显式排除：secrets/、.git/、.agents/、.claude/、.codex/、.workbuddy/
 - 按 markdown 标题（H1/H2/H3）切片；单段过长再按 800 字硬切、重叠 80
-- 嵌入模型：BAAI/bge-small-zh-v1.5（本地跑，首次运行会下载）
+- 嵌入模型：BAAI/bge-large-zh-v1.5（本地跑，首次运行会下载）
 - 存储：Chroma PersistentClient，collection 名 xhy_kb
 """
 
@@ -35,7 +35,7 @@ INCLUDE_DIRS = {"career", "school", "work", "projects", "tech", "life", "methods
 EXCLUDE_DIRS = {"secrets", ".git", ".agents", ".claude", ".codex", ".workbuddy"}
 
 COLLECTION = "xhy_kb"
-EMBED_MODEL = "BAAI/bge-large-zh-v1.5"
+EMBED_MODEL = "rag/data/models/BAAI/bge-large-zh-v1.5"
 
 MAX_CHARS = 800
 OVERLAP = 80

@@ -18,7 +18,7 @@ const router = createRouter({
     },
     {
       path: '/:pathMatch(.*)*',
-      redirect: '/chat',
+      redirect: '/login',  // beforeEach guard will redirect to /chat if authenticated
     },
   ],
 })

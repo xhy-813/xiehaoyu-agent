@@ -18,7 +18,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 
 
-TIME_HINT = ("date", "time", "month", "year", "day", "timestamp")
+TIME_HINT = ("date", "time", "month", "year", "day", "timestamp", "ts", "dt", "created_at", "updated_at")
 
 
 @dataclass
@@ -38,7 +38,7 @@ def _is_time_col(name: str, series: pd.Series) -> bool:
     try:
         pd.to_datetime(series.head(20), errors="raise")
         return True
-    except Exception:  # noqa: BLE001
+    except (ValueError, TypeError):
         return False
 
 

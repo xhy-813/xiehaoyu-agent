@@ -18,6 +18,9 @@ declare module 'plotly.js' {
       config?: any,
     ): Promise<any>
     purge(div: HTMLElement | string): void
+    Plots: {
+      resize(div: HTMLElement | string): void
+    }
   }
   export default Plotly
 }

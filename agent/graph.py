@@ -13,6 +13,7 @@ planner → tool_router → tools → planner (loop, max 5) → finalize
 from __future__ import annotations
 
 import json
+import logging
 from typing import Any, AsyncIterator, TypedDict
 
 import pandas as pd
@@ -48,63 +49,87 @@ MAX_STEPS = settings.max_agent_steps
 def _summarize(tool: str, result: Any) -> str:
     """Short text summary of a tool result for planner context."""
     if tool == "introduce_me":
-        return result.answer[:800]
+        return getattr(result, "answer", str(result))[:800]
     if tool == "query_data":
-        head = result.df.head(10).to_string(index=False)
-        return f"SQL: {result.sql}\n行数: {len(result.df)}\n前10行:\n{head}"
+        try:
+            df = getattr(result, "df", None)
+            sql = getattr(result, "sql", "")
+            head = df.head(10).to_string(index=False) if df is not None else "(无数据)"
+            return f"SQL: {sql}\n行数: {len(df) if df is not None else 0}\n前10行:\n{head}"
+        except Exception:
+            return str(result)[:800]
     if tool == "visualize":
-        return f"图表类型: {result.chart_type}（{result.reason}）"
+        ct = getattr(result, "chart_type", "?")
+        reason = getattr(result, "reason", "")
+        return f"图表类型: {ct}（{reason}）"
     if tool == "explain_result":
         return str(result)[:800]
     return str(result)[:800]
 
 
 def _run_tool(tool: str, args: dict, state: AgentState) -> dict:
-    """Execute one tool, return state patch."""
+    """Execute one tool, return state patch.
+
+    Tool-level exceptions are caught and recorded as error trace entries
+    so the planner can decide whether to retry or finalize.
+    """
     question = args.get("question", state["question"])
     trace = state.get("trace", [])
 
-    if tool == "introduce_me":
-        r = introduce_me(question)
-        artifact = {"answer": r.answer, "citations": r.citations}
-        return {"trace": trace + [{"tool": tool, "args": args, "summary": _summarize(tool, r), "artifact": artifact}]}
+    try:
+        if tool == "introduce_me":
+            r = introduce_me(question)
+            artifact = {"answer": r.answer, "citations": r.citations}
+            return {"trace": trace + [{"tool": tool, "args": args, "summary": _summarize(tool, r), "artifact": artifact}]}
 
-    if tool == "query_data":
-        r = query_data(question)
-        artifact = {"sql": r.sql, "df": r.df}
-        return {
-            "trace": trace + [{"tool": tool, "args": args, "summary": _summarize(tool, r), "artifact": artifact}],
-            "last_df": r.df,
-            "last_sql": r.sql,
-        }
+        if tool == "query_data":
+            r = query_data(question)
+            artifact = {"sql": r.sql, "df": r.df}
+            return {
+                "trace": trace + [{"tool": tool, "args": args, "summary": _summarize(tool, r), "artifact": artifact}],
+                "last_df": r.df,
+                "last_sql": r.sql,
+            }
 
-    if tool == "visualize":
-        df = state.get("last_df")
-        if df is None:
-            return {"trace": trace + [{"tool": tool, "args": args, "summary": "错误: 没有数据，请先调用 query_data", "artifact": None}]}
-        r = visualize(df, question)
-        artifact = {"figure": r.figure, "chart_type": r.chart_type}
-        return {"trace": trace + [{"tool": tool, "args": args, "summary": _summarize(tool, r), "artifact": artifact}]}
+        if tool == "visualize":
+            df = state.get("last_df")
+            if df is None:
+                return {"trace": trace + [{"tool": tool, "args": args, "summary": "错误: 没有数据，请先调用 query_data", "artifact": None}]}
+            r = visualize(df, question)
+            artifact = {"figure": r.figure, "chart_type": r.chart_type}
+            return {"trace": trace + [{"tool": tool, "args": args, "summary": _summarize(tool, r), "artifact": artifact}]}
 
-    if tool == "explain_result":
-        df = state.get("last_df")
-        sql = state.get("last_sql", "")
-        if df is None:
-            return {"trace": trace + [{"tool": tool, "args": args, "summary": "错误: 没有数据，请先调用 query_data", "artifact": None}]}
-        r = explain_result(question, sql, df)
-        artifact = {"insight": r}
-        return {"trace": trace + [{"tool": tool, "args": args, "summary": _summarize(tool, r), "artifact": artifact}]}
+        if tool == "explain_result":
+            df = state.get("last_df")
+            sql = state.get("last_sql", "")
+            if df is None:
+                return {"trace": trace + [{"tool": tool, "args": args, "summary": "错误: 没有数据，请先调用 query_data", "artifact": None}]}
+            r = explain_result(question, sql, df)
+            artifact = {"insight": r}
+            return {"trace": trace + [{"tool": tool, "args": args, "summary": _summarize(tool, r), "artifact": artifact}]}
 
-    raise ValueError(f"Unknown tool: {tool}")
+        raise ValueError(f"Unknown tool: {tool}")
+
+    except Exception as exc:
+        err_msg = f"工具 {tool} 执行失败: {exc}"
+        return {"trace": trace + [{"tool": tool, "args": args, "summary": err_msg, "artifact": None}]}
 
 
 # ── Nodes ────────────────────────────────────────────────
 
 
 def planner_node(state: AgentState) -> dict:
-    """Ask LLM what to do next."""
+    """Ask LLM what to do next.  Errors are caught and turned into
+    a ``finalize`` action so the UI always receives a response."""
     step = state.get("step", 0)
-    decision = plan(state["question"], state.get("trace", []))
+    try:
+        decision = plan(state["question"], state.get("trace", []))
+    except Exception as exc:
+        return {
+            "final_answer": f"Planner 调用失败: {exc}",
+            "next_action": "finalize",
+            "step": step + 1,
+        }
 
     if decision.get("action") == "finalize":
         return {
@@ -149,7 +174,7 @@ def router(state: AgentState) -> str:
     """Conditional edge: planner → tool | finalize."""
     step = state.get("step", 0)
 
-    if step > MAX_STEPS:
+    if step >= MAX_STEPS:
         return "finalize"
 
     if state.get("next_action") == "finalize":
@@ -159,6 +184,7 @@ def router(state: AgentState) -> str:
     if tool in ("introduce_me", "query_data", "visualize", "explain_result"):
         return tool
 
+    logging.warning("Unknown tool '%s' from planner, falling back to finalize", tool)
     return "finalize"
 
 

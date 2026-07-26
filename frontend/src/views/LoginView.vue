@@ -11,9 +11,7 @@
       <!-- Brand -->
       <div class="brand-section">
         <div class="brand-icon">
-          <n-icon size="44" color="#63e2b7">
-            <svg viewBox="0 0 24 24"><path fill="currentColor" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/></svg>
-          </n-icon>
+          <AnimatedAvatar :state="welcomeState" :size="80" @animation-end="handleWelcomeEnd" />
         </div>
         <h1 class="brand-title">Xiehaoyu-Agent</h1>
         <p class="brand-subtitle">个人智能体 · 数据问答工作台</p>
@@ -64,8 +62,11 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { useMessage } from 'naive-ui'
 import { useAuthStore } from '@/stores/auth'
 import { loginApi } from '@/api/client'
+import AnimatedAvatar from '@/components/shared/AnimatedAvatar.vue'
+import type { AvatarState } from '@/components/shared/AnimatedAvatar.vue'
 
 const router = useRouter()
 const auth = useAuthStore()
@@ -73,6 +74,11 @@ const message = useMessage()
 
 const code = ref('')
 const loading = ref(false)
+const welcomeState = ref<AvatarState>('welcome')
+
+function handleWelcomeEnd() {
+  welcomeState.value = 'idle'
+}
 
 async function handleLogin() {
   if (!code.value.trim()) return

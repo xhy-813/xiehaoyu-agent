@@ -12,6 +12,7 @@ import re
 
 from openai import OpenAI
 
+from agent.llm_client import get_client
 from configs.settings import settings
 
 
@@ -43,15 +44,6 @@ PLANNER_SYSTEM = """\
 """
 
 
-def _client() -> OpenAI:
-    if not settings.deepseek_api_key:
-        raise RuntimeError("DEEPSEEK_API_KEY not set in .env")
-    return OpenAI(
-        api_key=settings.deepseek_api_key,
-        base_url=settings.deepseek_base_url,
-    )
-
-
 def _extract_json(raw: str) -> dict:
     """Parse JSON from LLM output, handling markdown code blocks."""
     raw = raw.strip()
@@ -65,7 +57,7 @@ def _extract_json(raw: str) -> dict:
         return json.loads(raw)
     except json.JSONDecodeError:
         # Fallback: extract first {...} block
-        match = re.search(r"\{.*\}", raw, re.DOTALL)
+        match = re.search(r"\{.*?\}", raw, re.DOTALL)
         if match:
             return json.loads(match.group())
         raise ValueError(f"Planner output is not valid JSON: {raw}")
@@ -78,7 +70,7 @@ def plan(question: str, trace: list[dict], client: OpenAI | None = None) -> dict
         {"action": "call", "tool": str, "args": dict}
         {"action": "finalize", "answer": str}
     """
-    client = client or _client()
+    client = client or get_client()
 
     # Build trace context
     if trace:
@@ -101,7 +93,7 @@ def plan(question: str, trace: list[dict], client: OpenAI | None = None) -> dict
             {"role": "system", "content": PLANNER_SYSTEM},
             {"role": "user", "content": user_msg},
         ],
-        temperature=0.0,
+        temperature=settings.planner_temperature,
     )
     raw = resp.choices[0].message.content or ""
     return _extract_json(raw)

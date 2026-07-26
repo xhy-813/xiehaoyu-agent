@@ -30,49 +30,16 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useChatStore } from '@/stores/chat'
-import type { Artifact } from '@/utils/sse'
 
 const chat = useChatStore()
-
-const CHART_LABELS: Record<string, string> = {
-  indicator: '指标卡',
-  line: '折线图',
-  bar: '柱状图',
-  scatter: '散点图',
-  table: '表格',
-}
 
 const latestTrace = computed(() => {
   if (chat.currentTrace.length === 0) return null
   return chat.currentTrace[chat.currentTrace.length - 1]
 })
 
-const dataArtifact = computed<Artifact | null>(() => {
-  for (let i = chat.currentTrace.length - 1; i >= 0; i--) {
-    const a = chat.currentTrace[i].artifact
-    if (a?.df_json) return a
-  }
-  return null
-})
-
-const chartArtifact = computed<Artifact | null>(() => {
-  for (let i = chat.currentTrace.length - 1; i >= 0; i--) {
-    const a = chat.currentTrace[i].artifact
-    if (a?.figure_json) return a
-  }
-  return null
-})
-
-const rowsCols = computed(() => {
-  const a = dataArtifact.value
-  if (!a?.df_shape) return '--'
-  return `${a.df_shape.rows} × ${a.df_shape.cols}`
-})
-
-const chartTypeLabel = computed(() => {
-  const t = chartArtifact.value?.chart_type || ''
-  return CHART_LABELS[t] || t || '--'
-})
+const rowsCols = computed(() => chat.rowsCols)
+const chartTypeLabel = computed(() => chat.chartTypeLabel)
 </script>
 
 <style scoped>

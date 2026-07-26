@@ -37,13 +37,7 @@ import { useChatStore } from '@/stores/chat'
 
 const chat = useChatStore()
 
-const dataArtifact = computed(() => {
-  for (let i = chat.currentTrace.length - 1; i >= 0; i--) {
-    const a = chat.currentTrace[i].artifact
-    if (a?.df_json) return a
-  }
-  return null
-})
+const dataArtifact = computed(() => chat.dataArtifact)
 
 const columns = computed(() => {
   const cols = dataArtifact.value?.df_columns || []

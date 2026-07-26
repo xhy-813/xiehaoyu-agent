@@ -1,68 +1,33 @@
 # Xiehaoyu-Agent
 
-基于 LLM Agent 的个人智能体与 ChatBI 系统。
+基于 LLM Agent 的个人智能体与 ChatBI 系统 — 谢浩宇的数字分身。
 
-- **介绍本人**：RAG 检索个人知识库，回答面试官/HR 关于"我是谁、做过什么"的问题
-- **ChatBI**：自然语言查 Olist 电商数据（Text2SQL + 自动可视化 + 结果解读）
+- **介绍本人**：RAG 检索个人知识库，以第一人称回答面试官/HR 关于"我是谁、做过什么"的问题
+- **ChatBI**：自然语言查 Olist 巴西电商数据（Text2SQL → 自动可视化 → 结果解读）
+
+> 公网部署地址 + 访问码见简历右上角 | GitHub 公开仓
 
 ## 技术栈
 
-Python · LangGraph · DeepSeek · ChromaDB · SQLite · Plotly · FastAPI · Vue 3 · TypeScript · Naive UI · Nginx
-
-## 项目结构
-
-```
-├── agent/          # LangGraph Agent 编排 (planner → tools 循环)
-├── backend/        # FastAPI 后端 (SSE 流式推送, JWT 鉴权)
-├── frontend/       # Vue 3 + TypeScript 前端 (Naive UI 暗色主题)
-├── chatbi/         # Text2SQL 模块 (schema, 校验, few-shot)
-├── rag/            # RAG 知识库检索 (ChromaDB + BGE 嵌入)
-├── prompts/        # LLM Prompt 模板
-├── configs/        # 全局配置
-├── deploy/         # 部署配置 (Nginx, systemd)
-├── tests/          # 冒烟测试
-└── docs/           # 设计文档
-```
-
-## 快速开始
-
-### 方式一：Streamlit 快速体验
-
-```bash
-python -m venv .venv
-source .venv/bin/activate            # Linux/Mac
-# .venv\Scripts\activate             # Windows
-pip install -r requirements.txt
-cp .env.example .env                 # 填入 DEEPSEEK_API_KEY / ACCESS_CODE
-streamlit run app.py
-```
-
-### 方式二：Vue 3 + FastAPI 生产部署
-
-```bash
-# 后端
-pip install -r requirements.txt
-pip install -r backend/requirements.txt
-cp .env.example .env                 # 填入 DEEPSEEK_API_KEY / ACCESS_CODE / JWT_SECRET
-uvicorn backend.app.main:app --reload
-
-# 前端
-cd frontend && npm install && npm run dev
-# 浏览器打开 http://localhost:5173
-```
-
-### 部署到服务器
-
-```bash
-# 参考 deploy/deploy.sh 一键部署脚本
-# 适用于 Ubuntu 20.04+ / 腾讯云轻量服务器
-chmod +x deploy/deploy.sh && sudo ./deploy.sh
-```
+| 层 | 选型 | 说明 |
+|---|---|---|
+| **LLM** | DeepSeek Chat API (`deepseek-v4-flash`) | 中文效果好、有免费额度 |
+| **Agent 编排** | LangGraph 1.2.9+ | 状态机式，支持 `astream()` 流式推送 |
+| **后端** | FastAPI + Uvicorn | 原生 async，SSE 流式推送，JWT 鉴权 |
+| **前端** | Vue 3 + TypeScript + Vite + Naive UI | 暗色主题，SSE 实时接收，Plotly 图表渲染 |
+| **RAG 向量库** | ChromaDB（本地持久化） | 零成本，cosine 距离 |
+| **Embedding** | BAAI/bge-large-zh-v1.5 | 通过 sentence-transformers 本地运行 |
+| **数据仓库** | SQLite（本地 .db 文件） | 部署简单 |
+| **数据集** | Kaggle Olist 巴西电商 | 9 张表关联，99441 条订单 |
+| **可视化** | Plotly（Python 生成 JSON → 前端 plotly.js 渲染） | 交互式，暗色主题适配 |
+| **动画** | Lottie（lottie-web） | 6 种角色动画状态 |
+| **部署** | 腾讯云轻量服务器 (2C4G) | Nginx 反向代理 + systemd 守护 |
+| **鉴权/限流** | 访问码 → JWT + 内存限流 | 每小时配额，防刷 API |
 
 ## 架构
 
 ```
-用户浏览器 (Vue 3 / Streamlit)
+用户浏览器 (Vue 3 + Naive UI 暗色主题)
     │
     │ POST /api/chat (SSE 流式)
     ▼
@@ -82,4 +47,463 @@ LangGraph Agent 状态机
 finalize → SSE 流式返回 (答案 + 数据 + 图表 + 轨迹)
 ```
 
-详见 [Xiehaoyu-Agent/overview.md](Xiehaoyu-Agent/overview.md)。
+### 流式推送 (SSE)
+
+前端 fetch POST `/api/chat` → 后端 `stream_run()` → `app.astream()` 逐节点产出事件：
+
+| 事件类型 | 触发节点 | 携带数据 |
+|---|---|---|
+| `planner_decision` | planner | `next_action`, `next_tool`, `step` |
+| `tool_end` | 各 tool | `tool`, `args`, `summary`, `artifact`（含序列化的 DataFrame/Plotly JSON） |
+| `final_answer` | finalize | `answer`, `steps` |
+
+- `_serialize_artifact()`: DataFrame → `df_json` + `df_shape` + `df_columns`; Plotly Figure → `figure_json`
+- Nginx 需配置 `proxy_buffering off` 保证 SSE 实时推送
+
+### 状态机（LangGraph）
+
+```
+START → planner → tool_router → introduce_me/query_data/visualize/explain_result
+                    ↑                    │
+                    └──── 循环（≤5步）────┘
+                    │
+                    └──→ finalize → END
+```
+
+节点：
+- `planner`：调用 LLM，输入历史消息 + tool 结果，输出 JSON `{action, tool, args}` 或 `{action: "finalize", answer}`
+- `tool_router`：条件边，根据 planner 输出分发到具体 tool 节点
+- `introduce_me` / `query_data` / `visualize` / `explain_result`：4 个 tool 节点
+- `finalize`：拼装最终回答返回用户
+
+## 项目结构
+
+```
+xiehaoyu-agent/
+├── agent/                          # LangGraph Agent 编排
+│   ├── __init__.py
+│   ├── graph.py                    # 状态机定义 + stream_run() + _serialize_artifact()
+│   ├── planner.py                  # LLM Planner（输出 JSON 决策）
+│   ├── llm_client.py               # 共享 OpenAI 客户端工厂（DeepSeek）
+│   └── tools/
+│       ├── __init__.py
+│       ├── introduce_me.py         # RAG 个人知识库检索问答
+│       ├── query_data.py           # Text2SQL + 安全校验 + 失败重试
+│       ├── visualize.py            # 自动可视化（5 种图表类型）
+│       └── explain_result.py       # LLM 结果解读
+├── backend/                        # FastAPI 后端
+│   ├── requirements.txt            # fastapi, uvicorn, PyJWT
+│   └── app/
+│       ├── __init__.py
+│       ├── main.py                 # FastAPI 入口（CORS, 路由注册）
+│       ├── dependencies.py         # JWT Bearer 验证（Depends）
+│       ├── deps/
+│       │   ├── __init__.py
+│       │   └── rate_limit.py       # 内存限流（每小时配额）
+│       ├── routers/
+│       │   ├── __init__.py
+│       │   ├── auth.py             # POST /api/auth/login（访问码 → JWT）
+│       │   └── chat.py             # POST /api/chat（SSE 流式推送）
+│       └── schemas/
+│           ├── __init__.py
+│           ├── auth.py             # LoginRequest, TokenResponse
+│           └── chat.py             # ChatRequest
+├── frontend/                       # Vue 3 + TypeScript 前端
+│   ├── package.json
+│   ├── vite.config.ts              # Vite 配置（代理 /api → 后端）
+│   ├── tsconfig.json
+│   ├── index.html
+│   ├── public/
+│   │   └── lottie/                 # Lottie 动画 JSON 文件（6 个状态）
+│   └── src/
+│       ├── main.ts                 # Vue 入口（Pinia + Router）
+│       ├── App.vue                 # 根组件（暗色主题 + Naive UI 配置）
+│       ├── router/
+│       │   └── index.ts            # /login, /chat 路由守卫
+│       ├── stores/
+│       │   ├── auth.ts             # JWT 认证状态（sessionStorage）
+│       │   └── chat.ts             # 聊天状态 + SSE 流式 + Lottie 动画状态管理
+│       ├── api/
+│       │   └── client.ts           # API 客户端（login + SSE chat）
+│       ├── utils/
+│       │   ├── sse.ts              # SSE 客户端（fetch + ReadableStream 解析）
+│       │   ├── markdown.ts         # Markdown 渲染（markdown-it + highlight.js）
+│       │   └── tool-constants.ts   # Tool 中文标签、颜色、图表类型映射
+│       ├── composables/
+│       │   └── useAvatarState.ts   # 动画状态组合式函数
+│       ├── styles/
+│       │   └── global.css          # 全局样式（暗色主题、滚动条、动画）
+│       ├── views/
+│       │   ├── LoginView.vue       # 登录页（渐变背景 + Lottie 动画角色）
+│       │   └── ChatView.vue        # 主聊天布局（响应式：桌面侧边栏 + 移动端浮层）
+│       └── components/
+│           ├── shared/
+│           │   └── AnimatedAvatar.vue  # Lottie 动画角色组件（6 种状态）
+│           ├── chat/
+│           │   ├── ChatSidebar.vue     # 侧边栏（状态面板 + 清空对话 + 退出登录）
+│           │   ├── ChatMain.vue        # 聊天主区域（消息列表 + 输入框）
+│           │   ├── ChatMessage.vue     # 消息气泡（Markdown 渲染 + 内联结果展示）
+│           │   ├── ChatInput.vue       # 输入框（Enter 发送，Shift+Enter 换行）
+│           │   └── WelcomeCard.vue     # 欢迎卡片（3 组快捷提问入口）
+│           └── result/
+│               ├── ResultPanel.vue     # 结果面板容器（Tab 切换）
+│               ├── ResultSummary.vue   # 结果摘要（数据维度 + 图表类型 + 步骤数）
+│               ├── ResultData.vue      # 数据表格（Naive UI DataTable + SQL 折叠）
+│               ├── ResultChart.vue     # 图表渲染（Plotly.js）
+│               ├── ResultTrace.vue     # 执行轨迹时间线
+│               └── ChartRenderer.vue   # Plotly 图表渲染器（ResizeObserver 自适应）
+├── chatbi/                         # Text2SQL 模块
+│   ├── __init__.py
+│   ├── schema.py                   # 9 张 Olist 表完整 schema 描述
+│   ├── few_shots.py                # 5 组 (问题, SQL) few-shot 示例
+│   ├── validator.py                # SQL 安全校验（sqlparse + 黑名单）
+│   ├── load_olist.py               # CSV → SQLite 导入脚本
+│   └── data/                       # SQLite 数据库文件（olist.db）
+├── rag/                            # RAG 知识库模块
+│   ├── __init__.py
+│   ├── ingest.py                   # 语料切片 + 向量入库（BGE-large-zh-v1.5）
+│   ├── retriever.py                # Chroma top-k 检索封装
+│   └── data/
+│       ├── chroma/                 # Chroma 持久化向量库
+│       └── models/                 # 本地缓存的 BGE 嵌入模型
+├── prompts/                        # LLM Prompt 模板
+│   ├── system_persona.md           # Agent 核心人设（第一人称 + 回答风格 + 边界）
+│   ├── text2sql.md                 # Text2SQL 模板（schema + few-shot + 约束）
+│   └── explain.md                  # 数据解读模板
+├── configs/
+│   ├── __init__.py
+│   └── settings.py                 # 全局配置（API key, JWT, 限流, 温度参数, 启动校验）
+├── deploy/                         # 部署配置
+│   ├── deploy.sh                   # 一键部署脚本（Ubuntu 20.04+）
+│   ├── nginx.conf                  # Nginx 配置（SPA + API 代理 + SSE 禁用缓冲）
+│   └── xiehaoyu-agent.service     # systemd 服务文件
+├── tests/                          # 测试
+│   ├── __init__.py
+│   ├── smoke_agent.py              # Agent 全链路冒烟测试（3 类问题）
+│   ├── smoke_introduce_me.py       # RAG 工具测试
+│   ├── smoke_text2sql.py           # Text2SQL 工具测试
+│   ├── smoke_viz_explain.py        # 可视化 + 解读工具测试
+│   ├── test_auth.py                # 登录 API 单元测试
+│   ├── test_rate_limit.py          # 限流单元测试
+│   ├── test_text2sql.py            # Text2SQL 准确率评测（50 题，待完成）
+│   ├── test_rag.py                 # RAG 检索质量测试
+│   ├── test_validator.py           # SQL 校验器测试
+│   └── test_visualize.py           # 可视化选图逻辑测试
+├── docs/                           # 设计文档
+│   ├── Vue3-FastAPI-重构方案.md    # 重构方案设计文档
+│   ├── 代码审查/                    # 代码审查记录
+│   └── 形象整合方案/                # 角色形象 Lottie 动画整合方案
+├── data/                           # 数据文件
+│   ├── olist数据集/                 # Kaggle Olist CSV 源文件
+│   └── 知识库/                      # 个人知识库 Markdown 文件
+├── app.py                          # Streamlit 入口（原版 UI，保留兼容）
+├── requirements.txt                # Python 核心依赖
+├── README.md                       # 本文件
+├── overview.md                     # 项目概述与实施计划
+├── .env.example                    # 环境变量模板
+├── .gitignore                      # Git 忽略规则
+└── LICENSE                         # 开源许可证
+```
+
+## 功能详解
+
+### Tool 1: `introduce_me` — 个人知识库检索
+
+**流程**：用户问题 → BGE-large-zh-v1.5 嵌入 → Chroma 向量检索 top-10 → 构造 RAG prompt → LLM 生成第一人称回答
+
+**输入**：`question`（关于本人的问题）
+
+**输出**：`IntroduceResult`（回答文本 + 引用来源列表，含文件路径、标题、相似度分数）
+
+**语料来源**：个人知识库中 `career/`、`school/`、`work/`、`projects/`、`tech/`、`life/`、`methods/`、`templates/` 下所有 `.md` 文件
+
+**切片策略**：按 Markdown H1/H2/H3 标题切分；单段超过 800 字则硬切，重叠 80 字
+
+**人设 Prompt** (`prompts/system_persona.md`)：
+- 身份：谢浩宇的数字分身，吉首大学 2023 级数据科学与大数据技术专业
+- 风格：第一人称、具体有细节、有数字支撑、结构清晰、自然真诚
+- 边界：不泄露密码/隐私/家庭住址、不虚构项目经历
+
+### Tool 2: `query_data` — Text2SQL 查数据
+
+**流程**：用户问题 → 完整 schema + 5 个 few-shot 示例 → LLM 生成 SQL → sqlparse 语法校验 → 执行 → 失败反馈重试（最多 3 轮）
+
+**输入**：`question`（自然语言数据问题）
+
+**输出**：`QueryResult`（SQL 字符串 + 结果 DataFrame + 执行耗时 + 重试次数 + 执行轨迹）
+
+**安全校验** (`chatbi/validator.py`)：
+- 只允许单条语句
+- 只允许 `SELECT` / `WITH ... SELECT`
+- 关键字黑名单：`INSERT`, `UPDATE`, `DELETE`, `DROP`, `ALTER`, `CREATE`, `TRUNCATE`, `REPLACE`, `ATTACH`, `DETACH`, `PRAGMA`, `VACUUM`, `REINDEX`, `GRANT`, `REVOKE`
+
+**Few-shot 示例**（5 组）：
+1. 时间过滤 + 聚合："2018 年每月的订单数"
+2. 分组统计："支付方式的分布（订单数）"
+3. JOIN + 排序："销量 top 5 的商品品类（用英文品类名）"
+4. 多表 JOIN："各州（customer_state）的下单客户数 top 10"
+5. 条件聚合："已送达订单的平均评分"
+
+**Olist 数据集**（9 张表）：
+`customers` · `orders` · `order_items` · `order_payments` · `order_reviews` · `products` · `sellers` · `category_translation` · `geolocation`
+
+### Tool 3: `visualize` — 自动可视化
+
+**自动选图规则**（按优先级）：
+1. 1 行 1 列数值 → 指标卡（Indicator）
+2. 时间序列（1 时间列 + 1~N 数值列）→ 折线图
+3. 分类 + 数值（分类数 ≤ 30）→ 柱状图（按数值降序）
+4. 两个数值列 → 散点图
+5. 兜底 → 表格
+
+**时间列识别**：`dtype=datetime` 或列名含 `date/time/month/year/day/timestamp/ts/dt/created_at/updated_at`
+
+**输出**：`VizResult`（Plotly Figure + chart_type + reason）
+
+### Tool 4: `explain_result` — 结果解读
+
+**流程**：LLM 基于 (question, SQL, 数据预览) 输出 1~2 条中文业务洞察
+
+**输出**：解读文本
+
+### 典型数据流
+
+| 用户问题 | 执行链 |
+|---|---|
+| "介绍一下你自己" | planner → introduce_me → finalize |
+| "2018 年每月订单数，帮我画个图" | planner → query_data → visualize → explain_result → finalize |
+| "你了解电商数据吗？给我看一下 olist 的月订单趋势" | planner → introduce_me → query_data → visualize → explain_result → finalize |
+
+## 前端功能
+
+### 页面结构
+
+- **登录页** (`/login`)：动态渐变背景 + Lottie 动画角色 + 访问码输入 + 渐变品牌标题
+- **聊天页** (`/chat`)：左侧边栏 + 中间聊天区 + 路由守卫（未登录跳转登录页）
+
+### 角色动画系统（Lottie）
+
+基于 `lottie-web` 实现的 6 种动画状态：
+
+| 状态 | 触发条件 | 动画类型 |
+|---|---|---|
+| `welcome` | 登录页/欢迎卡片加载 | 一次性播放，结束后切 `idle` |
+| `idle` | 待机状态 | 循环播放 |
+| `thinking` | SSE 流式进行中 | 循环播放 |
+| `answering` | 流式结束（无数据/图表） | 一次性播放 2.5s |
+| `presenting` | 流式结束（有数据或图表） | 一次性播放 3.5s |
+| `error` | 流式出错 | 一次性播放 3s |
+
+### 聊天功能
+
+- **Markdown 渲染**：支持代码高亮（highlight.js）、表格、引用、链接
+- **流式光标**：流式输出中显示闪烁光标 `▊`
+- **内联结果展示**：每条 assistant 消息下方直接展示图表 + 数据表 + 执行轨迹
+- **SQL 折叠**：SQL 语句默认折叠，点击展开
+- **执行轨迹时间线**：带颜色编码的步骤时间线（蓝=查询 / 绿=图表 / 橙=检索 / 紫=解读）
+- **一键复制**：hover 消息气泡显示复制按钮
+- **快捷提问**：欢迎卡片提供 3 组快捷入口（自我介绍 / 数据分析 / 项目经历）
+
+### 响应式布局
+
+- 桌面端（≥768px）：侧边栏常驻 + 聊天区
+- 移动端（<768px）：侧边栏浮层 + 汉堡菜单
+
+### 主题
+
+- Naive UI 暗色主题（`darkTheme`）
+- 主色调：`#63e2b7`（青绿色）
+- 自定义主题覆盖：Layout、Card、Input、Button
+
+## API 文档
+
+### `POST /api/auth/login`
+
+请求体：
+```json
+{ "access_code": "your-access-code" }
+```
+
+响应：
+```json
+{ "access_token": "eyJ...", "token_type": "bearer" }
+```
+
+### `POST /api/chat`
+
+Headers: `Authorization: Bearer <token>`
+
+请求体：
+```json
+{ "question": "2018 年每月订单数" }
+```
+
+响应：`text/event-stream` SSE 流
+
+```
+data: {"type":"planner_decision","node":"planner","data":{"next_action":"call","next_tool":"query_data","step":1}}
+
+data: {"type":"tool_end","node":"query_data","data":{"tool":"query_data","summary":"SQL: SELECT ...","artifact":{"sql":"SELECT ...","df_json":"[...]","df_shape":{"rows":12,"cols":2},"df_columns":["month","cnt"]}}}
+
+data: {"type":"final_answer","node":"finalize","data":{"answer":"2018 年共有 12 个月的数据...","steps":4}}
+
+data: [DONE]
+```
+
+### `GET /api/health`
+
+响应：
+```json
+{ "status": "ok" }
+```
+
+## 快速开始
+
+### 方式一：Streamlit 快速体验
+
+```bash
+# 1. 创建虚拟环境
+python -m venv .venv
+source .venv/bin/activate            # Linux/Mac
+# .venv\Scripts\activate             # Windows
+
+# 2. 安装依赖
+pip install -r requirements.txt
+
+# 3. 配置环境变量
+cp .env.example .env                 # 填入 DEEPSEEK_API_KEY / ACCESS_CODE
+
+# 4. 启动
+streamlit run app.py
+```
+
+### 方式二：Vue 3 + FastAPI 生产模式
+
+```bash
+# 后端
+pip install -r requirements.txt
+pip install -r backend/requirements.txt
+cp .env.example .env                 # 填入 DEEPSEEK_API_KEY / ACCESS_CODE / JWT_SECRET
+uvicorn backend.app.main:app --reload
+
+# 前端
+cd frontend
+npm install
+npm run dev                          # 浏览器打开 http://localhost:5173
+```
+
+### 方式三：一键部署到服务器
+
+```bash
+# 适用于 Ubuntu 20.04+ / 腾讯云轻量服务器
+chmod +x deploy/deploy.sh
+sudo ./deploy.sh                     # 或 sudo ./deploy.sh your-domain.com（自动配置 HTTPS）
+```
+
+部署脚本执行步骤：
+1. 安装系统依赖（Python, Nginx, certbot）
+2. 克隆/更新代码
+3. 安装 Python 依赖（含 FastAPI）
+4. 配置环境变量（`.env`）
+5. 构建前端（`npm install && npm run build`）
+6. 配置 Nginx + systemd
+7. 可选：获取 SSL 证书
+
+## 配置参考
+
+所有配置通过 `.env` 文件管理：
+
+| 环境变量 | 默认值 | 说明 |
+|---|---|---|
+| `DEEPSEEK_API_KEY` | (必填) | DeepSeek API 密钥 |
+| `DEEPSEEK_BASE_URL` | `https://api.deepseek.com` | API 地址 |
+| `DEEPSEEK_MODEL` | `deepseek-v4-flash` | 模型名称 |
+| `ACCESS_CODE` | (必填) | 用户登录访问码 |
+| `JWT_SECRET` | (必填) | JWT 签名密钥（建议 `secrets.token_hex(32)` 生成） |
+| `JWT_EXPIRE_HOURS` | `24` | JWT 过期时间 |
+| `CORS_ORIGINS` | `http://localhost:5173` | 允许的前端地址（逗号分隔） |
+| `SESSION_HOURLY_QUOTA` | `50` | 每小时提问次数上限 |
+| `MAX_AGENT_STEPS` | `5` | Agent 最大推理步数 |
+| `SQL_RETRY_MAX` | `3` | SQL 失败最大重试次数 |
+| `PLANNER_TEMPERATURE` | `0.0` | Planner 温度（0=确定性） |
+| `TEXT2SQL_TEMPERATURE` | `0.0` | Text2SQL 温度 |
+| `RAG_TEMPERATURE` | `0.3` | RAG 回答温度 |
+| `EXPLAIN_TEMPERATURE` | `0.3` | 数据解读温度 |
+
+## 编码规范
+
+- **模块/文件**：`snake_case`
+- **类**：`PascalCase`
+- **Prompt 文件**：`.md` 放 `prompts/`，代码中用 `pathlib` 读取
+- **环境变量**：全大写 `SNAKE_CASE`
+- **前端组件**：`PascalCase.vue`，按功能分 `chat/`、`result/`、`shared/`
+- **前端状态**：Pinia stores（`auth.ts`、`chat.ts`）
+- **类型安全**：TypeScript strict mode + Pydantic schemas
+
+## 测试
+
+```bash
+# 冒烟测试
+python -m tests.smoke_agent          # Agent 全链路（3 类问题）
+python -m tests.smoke_introduce_me   # RAG 检索工具
+python -m tests.smoke_text2sql       # Text2SQL 工具
+python -m tests.smoke_viz_explain    # 可视化 + 解读工具
+
+# 单元测试
+pytest tests/test_auth.py -v         # 登录 API
+pytest tests/test_rate_limit.py -v   # 限流
+pytest tests/test_validator.py -v    # SQL 校验器
+pytest tests/test_visualize.py -v    # 可视化选图
+pytest tests/test_rag.py -v          # RAG 检索质量
+
+# 全部测试
+pytest tests/ -v
+```
+
+## 时间线
+
+| 日期 | 里程碑 |
+|---|---|
+| 2026-07-21 | 立项，方案确定 |
+| 2026-07-22 | Day 1-2: 数据准备 + Text2SQL |
+| 2026-07-22 | Day 3-4: Visualize/Explain + RAG |
+| 2026-07-22 | Day 5: LangGraph Agent 编排 |
+| 2026-07-23 | Day 6: Streamlit UI + 优化 |
+| 2026-07-24 | Day 7-8: Vue 3 + FastAPI 重构 + 代码审查 |
+| 2026-07-25 | Day 9: 部署配置 + 形象整合方案 + 项目审查 |
+| 2026-07-25 | MVP 达成 ✓ |
+
+## 后续迭代
+
+1. **Text2SQL 评测面板**：50 题准确率基线 + 错题分析
+2. **多数据集切换**：支持电影评分、航班等数据集
+3. **对话记忆持久化**：Redis / 本地文件存 session
+4. **多模态输入**：支持上传 CSV 即时接入 ChatBI
+5. **A/B 对比**：同时接入 DeepSeek / 千问 / GLM
+6. **技术文章**：博客发知乎/掘金
+
+## 简历表述
+
+**项目名**：Xiehaoyu-Agent · 基于 LLM Agent 的个人智能体与 ChatBI 系统
+
+**技术栈**：Python / LangGraph / DeepSeek / ChromaDB / SQLite / Plotly / FastAPI / Vue 3 / TypeScript / Naive UI / Nginx
+
+**要点**：
+- 设计并实现多 Tool Agent 编排架构（介绍本人 / Text2SQL 查数 / 自动可视化 / 结果解读），基于 LangGraph 状态机驱动 LLM 自主规划调用链，最多 5 轮循环推理
+- Text2SQL 引擎：完整 schema + few-shot prompt + sqlparse 语法校验 + 执行失败反馈自动重写（最多 3 轮），Olist 电商数据集（9 表关联，99441 行订单）
+- 构建 RAG 个人知识检索模块（BGE-large-zh-v1.5 嵌入 + ChromaDB），支持简历/项目文档热更新，回答附带来源引用
+- 前后端分离架构：FastAPI SSE 流式推送 + Vue 3 暗色主题 SPA + JWT 鉴权 + 6 种 Lottie 角色动画
+- 全链路公网部署（腾讯云轻量服务器），带访问码鉴权 + session 级 QPS 限流
+
+## 踩坑记录
+
+- **PowerShell stderr 误报**：Python 脚本的 stderr 输出（如 `warnings.warn()`）在 PowerShell 中被当作 `NativeCommandError`，导致 exit code 1
+- **transformers 5.x 的 torchvision 依赖**：`transformers>=5.0` 的 `zoedepth` 模块懒加载 `torchvision`，若未安装会在 Streamlit 热重载时报错，不影响 Agent 正常运行
+- **ChromaDB + sentence-transformers**：首次加载需下载 BGE 模型（约 1.3GB），已本地缓存到 `rag/data/models/`
+- **SSE 流式推送**：LangGraph 的 `astream()` 方法每次节点执行完毕就 yield 一次，完美匹配 SSE 需求
+- **Nginx proxy_buffering**：SSE 流式推送必须禁用 Nginx 缓冲（`proxy_buffering off`），否则前端只能一次性收到所有事件
+- **DataFrame 序列化**：`_serialize_artifact()` 将 DataFrame 转为 JSON（最多 500 行），Plotly Figure 转为 JSON，避免 `Object of type ndarray is not JSON serializable` 错误
+
+## License
+
+MIT

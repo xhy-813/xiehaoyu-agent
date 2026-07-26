@@ -38,6 +38,7 @@ export async function sseChatStream(
   question: string,
   token: string,
   callbacks: SSECallbacks,
+  signal?: AbortSignal,
 ): Promise<void> {
   const response = await fetch('/api/chat', {
     method: 'POST',
@@ -46,6 +47,7 @@ export async function sseChatStream(
       Authorization: `Bearer ${token}`,
     },
     body: JSON.stringify({ question }),
+    signal,
   })
 
   if (!response.ok) {
@@ -54,7 +56,12 @@ export async function sseChatStream(
     return
   }
 
-  const reader = response.body!.getReader()
+  if (!response.body) {
+    callbacks.onError?.('服务器返回了空的响应体')
+    return
+  }
+
+  const reader = response.body.getReader()
   const decoder = new TextDecoder()
   let buffer = ''
 
@@ -91,7 +98,8 @@ export async function sseChatStream(
             return
         }
       } catch {
-        // skip malformed JSON lines
+        // Malformed JSON line — log it but don't crash the stream
+        console.warn('[SSE] Failed to parse event:', raw.slice(0, 120))
       }
     }
   }

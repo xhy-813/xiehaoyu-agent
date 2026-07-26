@@ -1,10 +1,7 @@
 <template>
   <div class="welcome">
     <div class="welcome-icon">
-      <div class="icon-glow" />
-      <n-icon size="52" color="#63e2b7">
-        <svg viewBox="0 0 24 24"><path fill="currentColor" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/></svg>
-      </n-icon>
+      <AnimatedAvatar :state="welcomeState" :size="80" @animation-end="handleWelcomeEnd" />
     </div>
     <h2 class="welcome-title">你好，我是 Xiehaoyu-Agent</h2>
     <p class="welcome-desc">
@@ -36,11 +33,21 @@
 </template>
 
 <script setup lang="ts">
+import { ref } from 'vue'
 import { useChatStore } from '@/stores/chat'
+import AnimatedAvatar from '@/components/shared/AnimatedAvatar.vue'
+import type { AvatarState } from '@/components/shared/AnimatedAvatar.vue'
 
 const chat = useChatStore()
 
+const welcomeState = ref<AvatarState>('welcome')
+
+function handleWelcomeEnd() {
+  welcomeState.value = 'idle'
+}
+
 function handleQuick(q: string) {
+  if (chat.isStreaming) return
   chat.sendMessage(q)
 }
 
@@ -79,16 +86,8 @@ const groups = [
   padding: 0 1rem;
 }
 .welcome-icon {
-  position: relative;
   display: inline-block;
   margin-bottom: 1.25rem;
-}
-.icon-glow {
-  position: absolute;
-  inset: -10px;
-  border-radius: 50%;
-  background: rgba(99, 226, 183, 0.15);
-  filter: blur(20px);
 }
 .welcome-title {
   font-size: 1.5rem;

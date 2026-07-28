@@ -17,7 +17,7 @@ def main() -> None:
         r = introduce_me(q, top_k=5)
         print("--- 引用 ---")
         for j, c in enumerate(r.citations, 1):
-            print(f"[{j}] {c['source']}  # {c['heading']}  (dist={c['score']})")
+            print(f"[{j}] {c['source']}  # {c['heading']}  (dist={c['distance']}, sim={c['similarity']})")
         print("--- 回答 ---")
         print(r.answer)
 

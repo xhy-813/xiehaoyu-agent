@@ -20,12 +20,13 @@ from rag.retriever import Hit, retrieve
 
 
 PERSONA_PATH = Path(__file__).resolve().parents[2] / "prompts" / "system_persona.md"
+RAG_PROMPT_PATH = Path(__file__).resolve().parents[2] / "prompts" / "introduce_me.md"
 
 
 @dataclass
 class IntroduceResult:
     answer: str
-    citations: list[dict]  # [{source, heading, score}]
+    citations: list[dict]  # [{source, heading, distance, similarity}]
     hits: list[Hit]
 
 
@@ -49,17 +50,8 @@ def introduce_me(question: str, top_k: int = 10) -> IntroduceResult:
     persona = PERSONA_PATH.read_text(encoding="utf-8")
     context = _format_context(hits) or "(暂无检索片段)"
 
-    user_prompt = (
-        "以下是从我的个人知识库检索到的相关片段。请根据这些片段，用第一人称回答用户的问题。\n\n"
-        "【重要规则】\n"
-        "1. 你是谢浩宇本人，用「我」来回答，自然、真诚、有细节\n"
-        "2. 综合多个片段的信息，组织成连贯的回答，不要逐条复述\n"
-        "3. 优先使用数字和具体案例，不要泛泛而谈\n"
-        "4. 如果片段信息不足，诚实说明，不要编造\n"
-        "5. 回答末尾用 [来源: 文件名] 标注引用的片段\n\n"
-        f"【检索片段】\n{context}\n\n"
-        f"【用户问题】\n{question}"
-    )
+    rag_template = RAG_PROMPT_PATH.read_text(encoding="utf-8")
+    user_prompt = rag_template.format(context=context, question=question)
 
     client = get_client()
     resp = client.chat.completions.create(
@@ -72,6 +64,12 @@ def introduce_me(question: str, top_k: int = 10) -> IntroduceResult:
     )
     answer = (resp.choices[0].message.content or "").strip()
     citations = [
-        {"source": h.source, "heading": h.heading, "score": round(h.score, 4)} for h in hits
+        {
+            "source": h.source,
+            "heading": h.heading,
+            "distance": round(h.distance, 4),
+            "similarity": h.similarity,
+        }
+        for h in hits
     ]
     return IntroduceResult(answer=answer, citations=citations, hits=hits)

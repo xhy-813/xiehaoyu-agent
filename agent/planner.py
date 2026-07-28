@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import re
+from pathlib import Path
 
 from openai import OpenAI
 
@@ -16,32 +17,11 @@ from agent.llm_client import get_client
 from configs.settings import settings
 
 
-PLANNER_SYSTEM = """\
-你是 Agent 规划器。根据用户问题和已有工具执行结果，决定下一步动作。
+PLANNER_PROMPT_PATH = Path(__file__).resolve().parents[1] / "prompts" / "planner.md"
 
-【可用工具】
-1. introduce_me(question) — 检索个人知识库，回答关于本人的问题
-2. query_data(question) — 自然语言查 Olist 电商数据集，返回 SQL + 结果表
-3. visualize(question) — 根据最近一次 query_data 的结果自动画图（必须先执行 query_data）
-4. explain_result(question) — 对最近一次 query_data 的结果做自然语言解读（必须先执行 query_data）
 
-【输出格式】
-严格输出 JSON，不要输出任何其他内容。
-
-调用工具：
-{"action": "call", "tool": "工具名", "args": {"question": "参数值"}}
-
-结束回答：
-{"action": "finalize", "answer": "最终回答文本"}
-
-【规则】
-- 每次只调用一个工具
-- visualize 和 explain_result 依赖 query_data 的结果，必须先执行 query_data
-- 当已有足够信息回答用户问题时，选择 finalize
-- 不要虚构信息，不确定时调用 introduce_me 检索
-- 如果用户要求画图或解读，确保按顺序调用 query_data → visualize/explain_result → finalize
-- finalize 的 answer 应该是综合所有工具结果的完整回答，用中文
-"""
+def _load_planner_system() -> str:
+    return PLANNER_PROMPT_PATH.read_text(encoding="utf-8")
 
 
 def _extract_json(raw: str) -> dict:
@@ -90,7 +70,7 @@ def plan(question: str, trace: list[dict], client: OpenAI | None = None) -> dict
     resp = client.chat.completions.create(
         model=settings.deepseek_model,
         messages=[
-            {"role": "system", "content": PLANNER_SYSTEM},
+            {"role": "system", "content": _load_planner_system()},
             {"role": "user", "content": user_msg},
         ],
         temperature=settings.planner_temperature,

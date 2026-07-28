@@ -4,7 +4,6 @@
 
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, watch } from 'vue'
-import Plotly from 'plotly.js-dist'
 
 const props = defineProps<{ figureJson: string }>()
 
@@ -13,25 +12,45 @@ let chartInstance: any = null
 let rafId = 0
 let resizeObserver: ResizeObserver | null = null
 
-function render() {
+// plotly.js-dist 体积大，按需动态加载（仅真正出图时加载一次）
+let plotlyPromise: Promise<any> | null = null
+let PlotlyRef: any = null
+
+function ensurePlotly(): Promise<any> {
+  if (!plotlyPromise) {
+    plotlyPromise = import('plotly.js-dist').then((m) => {
+      PlotlyRef = (m as any).default || m
+      return PlotlyRef
+    })
+  }
+  return plotlyPromise
+}
+
+async function render() {
   const el = rootRef.value
   if (!el || !props.figureJson) return
   if (el.offsetWidth === 0 || el.offsetHeight === 0) {
     rafId = requestAnimationFrame(render)
     return
   }
+  const Plotly = await ensurePlotly()
   if (chartInstance) {
     Plotly.purge(el)
     chartInstance = null
   }
   try {
     const fig = JSON.parse(props.figureJson)
-    Plotly.newPlot(el, fig.data, fig.layout, {
-      responsive: true, displayModeBar: true, displaylogo: false,
-      modeBarButtonsToRemove: ['lasso2d', 'select2d', 'sendDataToCloud'],
-      paper_bgcolor: 'transparent', plot_bgcolor: 'transparent',
-      font: { color: '#aaa', size: 11 },
+    const layout = {
+      paper_bgcolor: 'rgba(0,0,0,0)',
+      plot_bgcolor: 'rgba(0,0,0,0)',
+      font: { color: '#5c6370', size: 11 },
       margin: { t: 40, r: 20, b: 50, l: 50 },
+      ...fig.layout,
+    }
+    Plotly.newPlot(el, fig.data, layout, {
+      responsive: true,
+      displaylogo: false,
+      displayModeBar: false,
     }).then((plot: any) => { chartInstance = plot })
   } catch {
     // Malformed figure JSON; leave the chart area empty.
@@ -43,8 +62,8 @@ onMounted(() => {
   // Re-render chart when the container size changes (window resize, etc.)
   if (rootRef.value) {
     resizeObserver = new ResizeObserver(() => {
-      if (chartInstance && rootRef.value) {
-        Plotly.Plots.resize(rootRef.value)
+      if (chartInstance && rootRef.value && PlotlyRef) {
+        PlotlyRef.Plots.resize(rootRef.value)
       }
     })
     resizeObserver.observe(rootRef.value)
@@ -61,8 +80,8 @@ onUnmounted(() => {
     resizeObserver.disconnect()
     resizeObserver = null
   }
-  if (chartInstance && rootRef.value) {
-    Plotly.purge(rootRef.value)
+  if (chartInstance && rootRef.value && PlotlyRef) {
+    PlotlyRef.purge(rootRef.value)
     chartInstance = null
   }
 })

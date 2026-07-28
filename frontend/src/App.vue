@@ -1,5 +1,5 @@
 <template>
-  <n-config-provider :theme="darkTheme" :theme-overrides="themeOverrides">
+  <n-config-provider :theme-overrides="themeOverrides">
     <n-message-provider>
       <router-view />
     </n-message-provider>
@@ -7,38 +7,49 @@
 </template>
 
 <script setup lang="ts">
-import { darkTheme } from 'naive-ui'
 import type { GlobalThemeOverrides } from 'naive-ui'
 
 const themeOverrides: GlobalThemeOverrides = {
   common: {
-    fontFamily: '"Inter", "Segoe UI", -apple-system, sans-serif',
-    borderRadius: '8px',
-    primaryColor: '#63e2b7',
-    primaryColorHover: '#7ff0cb',
-    primaryColorPressed: '#4dcb9d',
-    primaryColorSuppl: '#63e2b7',
+    fontFamily: '"Segoe UI", -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif',
+    borderRadius: '10px',
+    primaryColor: '#0b7a55',
+    primaryColorHover: '#0d9463',
+    primaryColorPressed: '#096a48',
+    primaryColorSuppl: '#0b7a55',
+    textColor1: '#1f2328',
+    textColor2: '#5c6370',
+    textColor3: '#6b7280',
+    borderColor: 'rgba(0,0,0,0.08)',
   },
   Layout: {
-    siderColor: 'rgba(24, 24, 28, 0.95)',
-    headerColor: 'rgba(16, 16, 20, 1)',
-    footerColor: 'rgba(16, 16, 20, 1)',
+    siderColor: '#f9f9f9',
+    color: '#ffffff',
   },
   Card: {
-    color: 'rgba(255, 255, 255, 0.04)',
-    borderColor: 'rgba(255, 255, 255, 0.08)',
+    color: '#ffffff',
+    borderColor: 'rgba(0,0,0,0.08)',
   },
   Input: {
-    color: 'rgba(255, 255, 255, 0.06)',
-    border: '1px solid rgba(255, 255, 255, 0.1)',
-    borderHover: '1px solid rgba(255, 255, 255, 0.2)',
-    borderFocus: '1px solid #63e2b7',
+    color: '#ffffff',
+    colorFocus: '#ffffff',
+    border: '1px solid rgba(0,0,0,0.12)',
+    borderHover: '1px solid rgba(0,0,0,0.2)',
+    borderFocus: '1px solid #0b7a55',
+    boxShadowFocus: '0 0 0 2px rgba(11,122,85,0.15)',
   },
   Button: {
-    colorPrimary: '#63e2b7',
-    colorHoverPrimary: '#7ff0cb',
-    colorPressedPrimary: '#4dcb9d',
-    textColorPrimary: '#101014',
+    colorPrimary: '#1f2328',
+    colorHoverPrimary: '#3a4048',
+    colorPressedPrimary: '#111418',
+    textColorPrimary: '#ffffff',
+    textColorHoverPrimary: '#ffffff',
+    textColorPressedPrimary: '#ffffff',
+  },
+  DataTable: {
+    thColor: 'rgba(0,0,0,0.02)',
+    thTextColor: '#5c6370',
+    borderColor: 'rgba(0,0,0,0.06)',
   },
 }
 </script>

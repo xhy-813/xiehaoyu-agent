@@ -6,12 +6,17 @@
       :class="{ 'mobile-overlay': isMobile }"
       @close="showSidebar = false"
     />
+    <div
+      v-if="isMobile && showSidebar"
+      class="sidebar-mask"
+      @click="showSidebar = false"
+    />
 
     <!-- Main chat area (full width, no right panel) -->
     <n-layout-content class="chat-main-area">
       <!-- Mobile header -->
       <div v-if="isMobile" class="mobile-bar">
-        <n-button text size="small" @click="showSidebar = !showSidebar">
+        <n-button text size="small" aria-label="打开侧栏菜单" @click="showSidebar = !showSidebar">
           <template #icon>
             <n-icon size="18"><svg viewBox="0 0 24 24"><path fill="currentColor" d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/></svg></n-icon>
           </template>
@@ -37,12 +42,18 @@ function checkMobile() {
   isMobile.value = window.innerWidth < 768
 }
 
+function handleKeydown(e: KeyboardEvent) {
+  if (isMobile.value && e.key === 'Escape') showSidebar.value = false
+}
+
 onMounted(() => {
   checkMobile()
   window.addEventListener('resize', checkMobile)
+  window.addEventListener('keydown', handleKeydown)
 })
 onUnmounted(() => {
   window.removeEventListener('resize', checkMobile)
+  window.removeEventListener('keydown', handleKeydown)
 })
 </script>
 
@@ -62,13 +73,21 @@ onUnmounted(() => {
   align-items: center;
   justify-content: space-between;
   padding: 0.5rem 0.75rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(16, 16, 20, 0.95);
+  border-bottom: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.95);
 }
 .mobile-title {
   font-size: 0.9rem;
   font-weight: 600;
-  color: #e0e0e0;
+  color: var(--text-1);
+}
+
+.sidebar-mask {
+  position: fixed;
+  inset: 0;
+  z-index: 99;
+  background: rgba(0, 0, 0, 0.4);
+  animation: fadeIn 0.2s ease-out;
 }
 
 .mobile-overlay {
@@ -76,6 +95,7 @@ onUnmounted(() => {
   top: 0; left: 0; bottom: 0;
   z-index: 100;
   width: 280px !important;
-  box-shadow: 4px 0 16px rgba(0, 0, 0, 0.5);
+  box-shadow: 4px 0 16px rgba(0, 0, 0, 0.15);
+  animation: slideInLeft 0.25s ease-out;
 }
 </style>

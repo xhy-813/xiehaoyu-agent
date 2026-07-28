@@ -1,14 +1,44 @@
 /* ============================================================
-   Xiehaoyu-Agent — Global Styles
+   Xiehaoyu-Agent — Global Styles (Light)
    ============================================================ */
+
+:root {
+  /* 背景 */
+  --bg-base: #ffffff;
+  --bg-sider: #f9f9f9;
+  --bg-bubble-user: #eafaf3;
+  --bg-subtle: rgba(0, 0, 0, 0.03);        /* 卡片头/表头浅底 */
+  /* 品牌 */
+  --accent: #63e2b7;                        /* 仅小面积点缀：selection、头像光晕 */
+  --accent-strong: #0b7a55;                 /* 工作色：链接/强调/焦点/流光（白底 4.6:1） */
+  --accent-strong-hover: #0d9463;
+  --ink: #1f2328;                           /* 主按钮（近黑，ChatGPT 风） */
+  --ink-hover: #3a4048;
+  /* 文本 */
+  --text-1: #1f2328;                        /* 15.8:1 主文本 */
+  --text-2: #5c6370;                        /* 7.0:1  次要文本 */
+  --text-3: #6b7280;                        /* 4.7:1  辅助/时间戳（过 AA） */
+  /* 结构 */
+  --border: rgba(0, 0, 0, 0.08);
+  --border-strong: rgba(0, 0, 0, 0.12);
+  --shadow-pop: 0 2px 12px rgba(0, 0, 0, 0.06);
+  --shadow-card: 0 8px 32px rgba(0, 0, 0, 0.08);
+  --radius-card: 10px;
+  --radius-pill: 999px;
+  /* 工具轨迹色（浅底可读版，与 tool-constants.ts 同步） */
+  --tool-query: #4f83e0;
+  --tool-viz: #0b7a55;
+  --tool-rag: #d97706;
+  --tool-explain: #9333ea;
+}
 
 html, body, #app {
   margin: 0;
   padding: 0;
   height: 100%;
-  background: #0a0a0f;
-  color: #e0e0e0;
-  font-family: 'Inter', 'Segoe UI', -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  background: var(--bg-base);
+  color: var(--text-1);
+  font-family: 'Segoe UI', -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -17,33 +47,45 @@ html, body, #app {
 
 ::-webkit-scrollbar { width: 5px; height: 5px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.1); border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.18); }
+::-webkit-scrollbar-thumb { background: rgba(0, 0, 0, 0.15); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(0, 0, 0, 0.25); }
 
-/* ── Selection ─────────────────────────────────────────── */
+/* ── Selection ─────────────────────────────── */
 
 ::selection {
-  background: rgba(99, 226, 183, 0.25);
-  color: #fff;
+  background: rgba(99, 226, 183, 0.35);
+  color: var(--text-1);
 }
 
-/* ── Markdown Code Blocks ──────────────────────────────── */
+/* ── Focus ring ─────────────────────────────── */
+
+:focus-visible {
+  outline: 2px solid var(--accent-strong);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* ── Markdown Code Blocks ─────────────────────────────── */
 
 pre code.hljs {
   border-radius: 10px;
   padding: 1rem 1.1rem;
   font-size: 0.84rem;
   line-height: 1.55;
-  font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', 'Consolas', monospace;
+  font-family: ui-monospace, 'Cascadia Code', 'JetBrains Mono', Consolas, monospace;
 }
 
 /* Inline code */
 :not(pre) > code {
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(0, 0, 0, 0.05);
   padding: 0.12em 0.4em;
   border-radius: 4px;
   font-size: 0.88em;
 }
+
+/* ── Tabular numbers ─────────────────────────── */
+
+.n-data-table, .status-text { font-variant-numeric: tabular-nums; }
 
 /* ── Animations ────────────────────────────────────────── */
 
@@ -59,9 +101,22 @@ pre code.hljs {
   from { opacity: 0; transform: translateX(20px); }
   to   { opacity: 1; transform: translateX(0); }
 }
-@keyframes pulse {
+@keyframes slideInLeft {
+  from { opacity: 0; transform: translateX(-20px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-6px); }
+  75% { transform: translateX(6px); }
+}
+@keyframes flowDown {
+  from { background-position: 0 -100%; }
+  to   { background-position: 0 100%; }
+}
+@keyframes blink {
   0%, 100% { opacity: 1; }
-  50% { opacity: 0.5; }
+  50% { opacity: 0; }
 }
 
 .chat-message-enter {
@@ -79,18 +134,14 @@ pre code.hljs {
 .streaming-cursor::after {
   content: '▊';
   animation: blink 1s step-end infinite;
-  color: #63e2b7;
-}
-@keyframes blink {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0; }
+  color: var(--accent-strong);
 }
 
 /* ── Naive UI Overrides ────────────────────────────────── */
 
 /* Softer card borders */
 .n-card {
-  --n-border-color: rgba(255, 255, 255, 0.06) !important;
+  --n-border-color: var(--border) !important;
 }
 
 /* Smooth tab transitions */
@@ -106,6 +157,16 @@ pre code.hljs {
 /* Code component */
 .n-code {
   border-radius: 8px;
+}
+
+/* ── Reduced motion ─────────────────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
 
 /* ── Utility ───────────────────────────────────────────── */

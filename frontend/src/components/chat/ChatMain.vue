@@ -17,7 +17,9 @@
     <div class="input-area">
       <ChatInput
         :disabled="chat.isStreaming"
+        :streaming="chat.isStreaming"
         @send="handleSend"
+        @stop="chat.stopStreaming"
       />
     </div>
   </div>
@@ -71,7 +73,7 @@ watch(
   padding: 1.5rem 2rem;
 }
 .messages-list {
-  max-width: 860px;
+  max-width: 768px;
   margin: 0 auto;
 }
 .input-area {

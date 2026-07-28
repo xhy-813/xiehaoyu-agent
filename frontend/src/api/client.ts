@@ -4,21 +4,22 @@ const BASE = '/api'
 
 async function request<T = unknown>(
   path: string,
-  options: RequestInit = {},
+  options: RequestInit & { skipAuthRedirect?: boolean } = {},
 ): Promise<T> {
+  const { skipAuthRedirect, ...fetchOptions } = options
   const auth = useAuthStore()
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
-    ...(options.headers as Record<string, string> | undefined),
+    ...(fetchOptions.headers as Record<string, string> | undefined),
   }
   if (auth.token) {
     headers['Authorization'] = `Bearer ${auth.token}`
   }
 
   const resp = await fetch(`${BASE}${path}`, {
-    ...options,
+    ...fetchOptions,
     headers,
-    signal: options.signal ?? AbortSignal.timeout(30000),
+    signal: fetchOptions.signal ?? AbortSignal.timeout(30000),
   })
   if (!resp.ok) {
     const body = await resp.json().catch(() => ({}))
@@ -26,8 +27,9 @@ async function request<T = unknown>(
     const err = new Error(detail) as any
     err.status = resp.status
 
-    // Global 401 handling: clear auth and redirect to login
-    if (resp.status === 401) {
+    // Global 401 handling: clear auth and redirect to login.
+    // 登录请求自身的 401 是"凭证错误"（由调用方内联展示），不重定向。
+    if (resp.status === 401 && !skipAuthRedirect) {
       auth.logout()
       window.location.href = '/login'
     }
@@ -48,5 +50,6 @@ export async function loginApi(accessCode: string): Promise<LoginResponse> {
   return request<LoginResponse>('/auth/login', {
     method: 'POST',
     body: JSON.stringify({ access_code: accessCode }),
+    skipAuthRedirect: true,
   })
 }

@@ -23,7 +23,12 @@ export interface Artifact {
   figure_json?: string
   chart_type?: string
   answer?: string
-  citations?: Array<{ source: string; heading: string; score: number }>
+  citations?: Array<{
+    source: string
+    heading: string
+    distance: number    // cosine distance，越小越相关
+    similarity: number  // 1 - distance，越大越相关
+  }>
 }
 
 export interface SSECallbacks {

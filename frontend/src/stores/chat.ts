@@ -2,7 +2,6 @@ import { defineStore } from 'pinia'
 import { ref, computed, watch } from 'vue'
 import { sseChatStream, type Artifact, type SSEChatEvent } from '@/utils/sse'
 import { useAuthStore } from '@/stores/auth'
-import { CHART_LABELS } from '@/utils/tool-constants'
 import type { AvatarState } from '@/components/shared/AnimatedAvatar.vue'
 
 export interface ToolTrace {
@@ -28,6 +27,7 @@ export const useChatStore = defineStore('chat', () => {
   const isStreaming = ref(false)
   const streamError = ref<string | null>(null)
   const abortController = ref<AbortController | null>(null)
+  const currentTool = ref<string | null>(null)  // 流式期间正在执行的工具名
 
   // ── Avatar state ──────────────────────────────────────────────────────────
 
@@ -72,8 +72,6 @@ export const useChatStore = defineStore('chat', () => {
     }
   })
 
-  // ── Artifact getters (shared across ChatMessage, ResultData, ResultSummary, ResultChart) ──
-
   /** Trace entries for the currently-streaming message, or the last completed one. */
   function _activeTrace(): ToolTrace[] {
     if (currentTrace.value.length > 0) return currentTrace.value
@@ -84,38 +82,6 @@ export const useChatStore = defineStore('chat', () => {
     }
     return []
   }
-
-  /** Last artifact containing df_json (backwards search). */
-  const dataArtifact = computed<Artifact | null>(() => {
-    const trace = _activeTrace()
-    for (let i = trace.length - 1; i >= 0; i--) {
-      const a = trace[i].artifact
-      if (a?.df_json) return a
-    }
-    return null
-  })
-
-  /** Last artifact containing figure_json. */
-  const chartArtifact = computed<Artifact | null>(() => {
-    const trace = _activeTrace()
-    for (let i = trace.length - 1; i >= 0; i--) {
-      const a = trace[i].artifact
-      if (a?.figure_json) return a
-    }
-    return null
-  })
-
-  const chartJson = computed(() => chartArtifact.value?.figure_json || null)
-
-  const rowsCols = computed(() => {
-    const a = dataArtifact.value
-    return a?.df_shape ? `${a.df_shape.rows}×${a.df_shape.cols}` : '--'
-  })
-
-  const chartTypeLabel = computed(() => {
-    const t = chartArtifact.value?.chart_type || ''
-    return CHART_LABELS[t] || t || '--'
-  })
 
   // ── Actions ──────────────────────────────────────────────────────────────
 
@@ -158,7 +124,11 @@ export const useChatStore = defineStore('chat', () => {
     // 4. Start SSE stream
     try {
       await sseChatStream(question, auth.token, {
+        onPlannerDecision: (data: SSEChatEvent['data']) => {
+          currentTool.value = data.next_action === 'call' ? (data.next_tool ?? null) : null
+        },
         onToolEnd: (data: SSEChatEvent['data']) => {
+          currentTool.value = null
           currentTrace.value.push({
             tool: data.tool || '',
             args: (data.args || {}) as Record<string, unknown>,
@@ -185,15 +155,27 @@ export const useChatStore = defineStore('chat', () => {
         assistantMsg.content = `执行失败：${err.message || '未知错误'}`
       }
     } finally {
+      // 停止/出错时兜底：把已收集的轨迹写回消息，保留停止前已完成的工具结果
+      if (!assistantMsg.trace && currentTrace.value.length > 0) {
+        assistantMsg.trace = [...currentTrace.value]
+        assistantMsg.steps = currentTrace.value.length
+        assistantMsg.tools = currentTrace.value.map((t) => t.tool)
+      }
       isStreaming.value = false
       abortController.value = null
+      currentTool.value = null
     }
+  }
+
+  function stopStreaming() {
+    abortController.value?.abort()
   }
 
   function clearChat() {
     messages.value = []
     currentTrace.value = []
     streamError.value = null
+    currentTool.value = null
     avatarState.value = 'idle'
     if (avatarTimer) { clearTimeout(avatarTimer); avatarTimer = null }
   }
@@ -203,14 +185,11 @@ export const useChatStore = defineStore('chat', () => {
     currentTrace,
     isStreaming,
     streamError,
+    currentTool,
     avatarState,
     hasData,
-    dataArtifact,
-    chartArtifact,
-    chartJson,
-    rowsCols,
-    chartTypeLabel,
     sendMessage,
+    stopStreaming,
     clearChat,
   }
 })

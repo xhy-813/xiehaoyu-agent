@@ -1,6 +1,5 @@
-/** Shared tool display constants used across ChatMessage, ResultTrace, and
- * ResultSummary components.  Changing a tool name or colour here updates
- * every component that references it. */
+/** Shared tool display constants used across ChatMessage and the chat store.
+ *  Changing a tool name or colour here updates every component that references it. */
 
 export const TOOL_LABELS: Record<string, string> = {
   query_data: '查询数据',
@@ -17,10 +16,10 @@ export const TAG_MAP: Record<string, 'info' | 'success' | 'warning' | 'default'>
 }
 
 export const STEP_COLORS: Record<string, string> = {
-  query_data: '#63a4ff',
-  visualize: '#63e2b7',
-  introduce_me: '#ffb74d',
-  explain_result: '#ce93d8',
+  query_data: '#4f83e0',
+  visualize: '#0b7a55',
+  introduce_me: '#d97706',
+  explain_result: '#9333ea',
 }
 
 export const CHART_LABELS: Record<string, string> = {

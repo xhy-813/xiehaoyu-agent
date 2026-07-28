@@ -2,22 +2,15 @@
   <div
     class="animated-avatar"
     :style="{ width: size + 'px', height: size + 'px' }"
-    :title="stateLabel"
+    :title="currentStateLabel"
   >
     <div ref="containerRef" class="lottie-container" />
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, watch, onMounted, onBeforeUnmount } from 'vue'
+import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import lottie, { type AnimationItem } from 'lottie-web'
-
-import idleData from '@/assets/lottie/idle.json'
-import thinkingData from '@/assets/lottie/thinking.json'
-import answeringData from '@/assets/lottie/answering.json'
-import welcomeData from '@/assets/lottie/welcome.json'
-import presentingData from '@/assets/lottie/presenting.json'
-import errorData from '@/assets/lottie/error.json'
 
 export type AvatarState = 'idle' | 'thinking' | 'answering' | 'welcome' | 'presenting' | 'error'
 
@@ -48,17 +41,25 @@ const stateLabel: Record<AvatarState, string> = {
   error: '出错了',
 }
 
-const animationDataMap: Record<AvatarState, any> = {
-  idle: idleData,
-  thinking: thinkingData,
-  answering: answeringData,
-  welcome: welcomeData,
-  presenting: presentingData,
-  error: errorData,
+const currentStateLabel = computed(() => stateLabel[props.state])
+
+// 动画 JSON 按状态懒加载（首屏只下载当前状态那份）
+const animationDataMap: Record<AvatarState, () => Promise<{ default: any }>> = {
+  idle: () => import('@/assets/lottie/idle.json'),
+  thinking: () => import('@/assets/lottie/thinking.json'),
+  answering: () => import('@/assets/lottie/answering.json'),
+  welcome: () => import('@/assets/lottie/welcome.json'),
+  presenting: () => import('@/assets/lottie/presenting.json'),
+  error: () => import('@/assets/lottie/error.json'),
 }
 
-function loadAnimation(state: AvatarState) {
+let loadToken = 0   // 竞态守卫：状态快速切换时丢弃过期加载
+
+async function loadAnimation(state: AvatarState) {
   if (!containerRef.value) return
+  const token = ++loadToken
+  const { default: animationData } = await animationDataMap[state]()
+  if (token !== loadToken || !containerRef.value) return   // 过期或已卸载
 
   // 销毁旧动画
   if (animInstance) {
@@ -67,14 +68,20 @@ function loadAnimation(state: AvatarState) {
   }
 
   const isLooping = loopingStates.has(state)
+  const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
   animInstance = lottie.loadAnimation({
     container: containerRef.value,
     renderer: 'svg',
     loop: isLooping,
-    autoplay: true,
-    animationData: animationDataMap[state],
+    autoplay: !reduced,
+    animationData,
   })
+
+  if (reduced) {
+    animInstance.goToAndStop(0, true)   // 减少动态：静态首帧
+    return
+  }
 
   // 非循环动画播完后触发回调
   if (!isLooping) {

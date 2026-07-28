@@ -15,14 +15,30 @@
       <div class="input-actions">
         <span class="char-count" v-if="text.length > 0">{{ text.length }}</span>
         <n-button
-          type="primary"
-          :disabled="!text.trim() || disabled"
-          :loading="disabled"
+          v-if="streaming"
           circle
+          aria-label="停止生成"
+          title="停止生成"
+          class="send-btn"
+          @click="emit('stop')"
+        >
+          <template #icon>
+            <n-icon size="16" color="#fff">
+              <svg viewBox="0 0 24 24"><path fill="currentColor" d="M6 6h12v12H6z"/></svg>
+            </n-icon>
+          </template>
+        </n-button>
+        <n-button
+          v-else
+          circle
+          aria-label="发送"
+          title="发送"
+          class="send-btn"
+          :disabled="!text.trim() || disabled"
           @click="handleSend"
         >
           <template #icon>
-            <n-icon size="18">
+            <n-icon size="18" color="#fff">
               <svg viewBox="0 0 24 24"><path fill="currentColor" d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
             </n-icon>
           </template>
@@ -36,8 +52,8 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 
-defineProps<{ disabled: boolean }>()
-const emit = defineEmits<{ send: [question: string] }>()
+defineProps<{ disabled: boolean; streaming?: boolean }>()
+const emit = defineEmits<{ send: [question: string]; stop: [] }>()
 
 const text = ref('')
 
@@ -57,22 +73,23 @@ function handleEnter(e: KeyboardEvent) {
 
 <style scoped>
 .chat-input-wrapper {
-  max-width: 760px;
+  max-width: 768px;
   margin: 0 auto;
 }
 .input-container {
   display: flex;
   align-items: flex-end;
   gap: 0.5rem;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 20px;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 28px;
+  box-shadow: var(--shadow-pop);
   padding: 0.4rem 0.5rem 0.4rem 1.2rem;
   transition: border-color 0.2s;
 }
 .input-container:focus-within {
-  border-color: rgba(99, 226, 183, 0.4);
-  background: rgba(255, 255, 255, 0.05);
+  border-color: var(--accent-strong);
+  background: #fff;
 }
 .input-container :deep(.n-input) {
   flex: 1;
@@ -87,16 +104,22 @@ function handleEnter(e: KeyboardEvent) {
   gap: 0.4rem;
   padding-bottom: 2px;
 }
+.send-btn {
+  background: var(--ink) !important;
+  transition: background 0.2s ease;
+}
+.send-btn:hover:not(:disabled) { background: var(--ink-hover) !important; }
+.send-btn:disabled { background: #c9ccd1 !important; }
 .char-count {
   font-size: 0.7rem;
-  color: #555;
+  color: var(--text-3);
   min-width: 20px;
   text-align: center;
 }
 .input-hint {
   text-align: center;
   font-size: 0.7rem;
-  color: #555;
+  color: var(--text-3);
   margin: 0.4rem 0 0;
 }
 </style>

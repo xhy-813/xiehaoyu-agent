@@ -37,14 +37,24 @@ def main() -> None:
     db_path.parent.mkdir(parents=True, exist_ok=True)
     engine = create_engine(f"sqlite:///{db_path}")
 
+    loaded = 0
+    skipped = 0
     for csv_name, table in TABLE_MAP.items():
         csv_path = src / csv_name
         if not csv_path.exists():
             print(f"[skip] missing {csv_path}")
+            skipped += 1
             continue
         df = pd.read_csv(csv_path)
         df.to_sql(table, engine, if_exists="replace", index=False)
         print(f"[ok] {csv_name} -> {table} ({len(df)} rows)")
+        loaded += 1
+
+    print(f"\nDone: {loaded} loaded, {skipped} skipped")
+    if loaded == 0:
+        print("[ERROR] No tables were loaded. Check that --src points to the Olist CSV directory.")
+        import sys
+        sys.exit(1)
 
 
 if __name__ == "__main__":

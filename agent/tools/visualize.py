@@ -34,21 +34,27 @@ def _is_time_col(name: str, series: pd.Series) -> bool:
     lname = name.lower()
     if not any(h in lname for h in TIME_HINT):
         return False
-    # 尝试宽松解析
+    # Random sample to avoid bias from first 20 rows
+    sample = series.dropna()
+    if len(sample) > 20:
+        sample = sample.sample(n=20, random_state=42)
     try:
-        pd.to_datetime(series.head(20), errors="raise")
+        pd.to_datetime(sample, errors="raise")
         return True
     except (ValueError, TypeError):
         return False
 
 
-def _table_fig(df: pd.DataFrame) -> go.Figure:
+def _table_fig(df: pd.DataFrame, max_rows: int = 50) -> go.Figure:
+    """Build a Plotly Table figure, truncating to *max_rows* to avoid
+    unbounded figure sizes."""
+    d = df.head(max_rows)
     return go.Figure(
         data=[
             go.Table(
-                header=dict(values=list(df.columns), fill_color="#eef", align="left"),
+                header=dict(values=list(d.columns), fill_color="#eef", align="left"),
                 cells=dict(
-                    values=[df[c].astype(str).tolist() for c in df.columns],
+                    values=[d[c].astype(str).tolist() for c in d.columns],
                     align="left",
                 ),
             )

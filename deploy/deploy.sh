@@ -56,8 +56,15 @@ if ! command -v node &> /dev/null; then
     exit 1
 fi
 cd "$APP_DIR/frontend"
-npm install
-npm run build
+
+# Run npm commands as the original (non-root) user when invoked via sudo
+if [ -n "${SUDO_USER:-}" ] && [ "$(id -u)" = "0" ]; then
+    sudo -u "$SUDO_USER" npm install
+    sudo -u "$SUDO_USER" npm run build
+else
+    npm install
+    npm run build
+fi
 
 # --- 6. Nginx + systemd ---
 echo "[6/6] 配置 Nginx 和 systemd..."
@@ -77,7 +84,13 @@ sudo systemctl restart xiehaoyu-agent
 # --- HTTPS (optional) ---
 if [ "$DOMAIN" != "_" ]; then
     echo "[HTTPS] 获取 SSL 证书..."
-    sudo certbot --nginx -d "$DOMAIN" --non-interactive --agree-tos --email admin@"$DOMAIN" || true
+    if sudo certbot --nginx -d "$DOMAIN" --non-interactive --agree-tos --email admin@"$DOMAIN"; then
+        echo "  SSL 证书获取成功！"
+    else
+        echo "  ⚠️  SSL 证书获取失败（exit code: $?）。"
+        echo "  ⚠️  请检查 DNS 是否正确解析到本服务器，或手动运行："
+        echo "  ⚠️    sudo certbot --nginx -d $DOMAIN"
+    fi
 fi
 
 echo "========================================"

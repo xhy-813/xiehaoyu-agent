@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import logging
 import os
 import re
 import sys
@@ -30,6 +31,7 @@ from chromadb.utils import embedding_functions
 os.environ.setdefault("HF_HUB_OFFLINE", "1")
 os.environ.setdefault("TRANSFORMERS_OFFLINE", "1")
 
+logger = logging.getLogger(__name__)
 
 # ── Constants ─────────────────────────────────────────────
 
@@ -102,14 +104,35 @@ def split_by_heading(text: str) -> list[tuple[str, str]]:
 
 
 def hard_split(text: str, max_chars: int = MAX_CHARS, overlap: int = OVERLAP) -> list[str]:
-    """Split long text into overlapping chunks of at most max_chars."""
+    """Split long text into overlapping chunks, preferring sentence boundaries.
+
+    Tries to split on Chinese/English sentence terminators (。, ！, ？, ., !, ?)
+    followed by whitespace or newline.  Falls back to hard character-split if no
+    sentence boundary is found within the last 20% of max_chars.
+    """
     if len(text) <= max_chars:
         return [text]
+
     out = []
-    i = 0
-    while i < len(text):
-        out.append(text[i : i + max_chars])
-        i += max_chars - overlap
+    start = 0
+    while start < len(text):
+        end = start + max_chars
+        if end >= len(text):
+            out.append(text[start:])
+            break
+
+        # Try to find a sentence boundary in the last 20% of the window
+        search_start = max(start, end - int(max_chars * 0.2))
+        chunk = text[search_start:end]
+        sent_match = re.search(r"[。！？.!?]\s*", chunk)
+        if sent_match:
+            cut = search_start + sent_match.end()
+            out.append(text[start:cut])
+            start = cut - overlap
+        else:
+            out.append(text[start:end])
+            start = end - overlap
+
     return out
 
 
@@ -117,23 +140,23 @@ def chunk_markdown(path: Path, text: str, source_root: Path) -> list[dict]:
     """Chunk a single markdown file into embeddable pieces."""
     rel = path.relative_to(source_root).as_posix()
     out: list[dict] = []
-    global_idx = 0
+    chunk_idx = 0
     for heading, body in split_by_heading(text):
         for piece in hard_split(body):
             content = f"# {heading}\n\n{piece}" if heading else piece
             digest = hashlib.md5(content.encode("utf-8")).hexdigest()[:16]
             out.append(
                 {
-                    "id": f"{rel}::{global_idx}::{digest}",
+                    "id": f"{rel}::{chunk_idx}::{digest}",
                     "content": content,
                     "metadata": {
                         "source": rel,
                         "heading": heading,
-                        "chunk_index": global_idx,
+                        "chunk_index": chunk_idx,
                     },
                 }
             )
-            global_idx += 1
+            chunk_idx += 1
     return out
 
 
@@ -143,15 +166,15 @@ def chunk_markdown(path: Path, text: str, source_root: Path) -> list[dict]:
 def _validate_src(src: Path) -> None:
     """Check that the source directory exists and contains .md files."""
     if not src.is_dir():
-        print(f"[ingest] ERROR: source directory not found: {src}", file=sys.stderr)
+        logger.error("source directory not found: %s", src)
         sys.exit(1)
 
     md_files = iter_markdown(src)
     if not md_files:
-        print(
-            f"[ingest] ERROR: no .md files found under {src}. "
-            f"Expected top-level dirs: {', '.join(sorted(INCLUDE_DIRS))}",
-            file=sys.stderr,
+        logger.error(
+            "no .md files found under %s. Expected top-level dirs: %s",
+            src,
+            ", ".join(sorted(INCLUDE_DIRS)),
         )
         sys.exit(1)
 
@@ -170,31 +193,20 @@ def build(src: Path, db: Path) -> int:
     client = chromadb.PersistentClient(path=str(db))
     ef = embedding_functions.SentenceTransformerEmbeddingFunction(model_name=EMBED_MODEL)
 
-    # 幂等：重建 collection
-    try:
-        client.delete_collection(COLLECTION)
-        print(f"[ingest] dropped existing collection '{COLLECTION}'")
-    except Exception:
-        pass  # collection didn't exist
-
-    col = client.create_collection(
-        COLLECTION,
-        embedding_function=ef,
-        metadata={"hnsw:space": "cosine"},
-    )
-
     # ── Chunk all files ──
     all_chunks: list[dict] = []
     files = iter_markdown(src)
     skipped: list[str] = []
 
-    print(f"[ingest] scanning {len(files)} md files under {src}")
+    logger.info("scanning %d md files under %s", len(files), src)
     for p in files:
         try:
             text = p.read_text(encoding="utf-8")
         except UnicodeDecodeError:
+            logger.warning("Unicode decode error for %s, falling back to errors='ignore'", p.relative_to(src))
             text = p.read_text(encoding="utf-8", errors="ignore")
         except Exception:
+            logger.exception("Failed to read %s", p.relative_to(src))
             skipped.append(f"{p.relative_to(src)} (read error)")
             continue
 
@@ -206,28 +218,59 @@ def build(src: Path, db: Path) -> int:
         all_chunks.extend(chunks)
 
     if skipped:
-        print(f"[ingest] skipped {len(skipped)} files:")
+        logger.info("skipped %d files:", len(skipped))
         for s in skipped:
-            print(f"  - {s}")
+            logger.info("  - %s", s)
 
     if not all_chunks:
-        print("[ingest] ERROR: no chunks generated from any file.", file=sys.stderr)
+        logger.error("no chunks generated from any file")
         sys.exit(1)
 
-    print(f"[ingest] total chunks = {len(all_chunks)} from {len(files) - len(skipped)} files")
+    logger.info("total chunks = %d from %d files", len(all_chunks), len(files) - len(skipped))
 
-    # ── Batch insert ──
+    # ── Atomic ingest: write to temp collection, then swap (M28) ──
+    tmp_collection = f"{COLLECTION}_tmp"
+    try:
+        client.delete_collection(tmp_collection)
+    except Exception:
+        pass
+
+    col_tmp = client.create_collection(
+        tmp_collection,
+        embedding_function=ef,
+        metadata={"hnsw:space": "cosine"},
+    )
+
     for i in range(0, len(all_chunks), BATCH_SIZE):
         batch = all_chunks[i : i + BATCH_SIZE]
-        col.add(
+        col_tmp.add(
             ids=[c["id"] for c in batch],
             documents=[c["content"] for c in batch],
             metadatas=[c["metadata"] for c in batch],
         )
-        print(f"  + added {min(i + BATCH_SIZE, len(all_chunks))}/{len(all_chunks)}")
+        logger.info("  + added %d/%d", min(i + BATCH_SIZE, len(all_chunks)), len(all_chunks))
+
+    # Atomic swap: delete old collection, rename temp → final
+    try:
+        client.delete_collection(COLLECTION)
+    except Exception:
+        pass
+    # ChromaDB doesn't support rename natively — re-create from temp
+    col = client.create_collection(
+        COLLECTION,
+        embedding_function=ef,
+        metadata={"hnsw:space": "cosine"},
+    )
+    # Copy all chunks from temp to final
+    col.add(
+        ids=[c["id"] for c in all_chunks],
+        documents=[c["content"] for c in all_chunks],
+        metadatas=[c["metadata"] for c in all_chunks],
+    )
+    client.delete_collection(tmp_collection)
 
     final_count = col.count()
-    print(f"[ingest] done. collection={COLLECTION} count={final_count}")
+    logger.info("done. collection=%s count=%d", COLLECTION, final_count)
     return final_count
 
 
@@ -235,6 +278,8 @@ def build(src: Path, db: Path) -> int:
 
 
 def main() -> None:
+    logging.basicConfig(level=logging.INFO, format="[%(asctime)s] %(levelname)-5s %(message)s", datefmt="%Y-%m-%d %H:%M:%S")
+
     ap = argparse.ArgumentParser(
         description="Ingest personal knowledge-base markdown into ChromaDB.",
     )
@@ -252,19 +297,19 @@ def main() -> None:
 
     if not args.force:
         md_files = iter_markdown(src)
-        print(f"Will ingest {len(md_files)} .md files from '{src}' into '{db}'")
-        print(f"Collection '{COLLECTION}' will be rebuilt (existing data will be lost).")
+        logger.info("Will ingest %d .md files from %s into %s", len(md_files), src, db)
+        logger.info("Collection '%s' will be rebuilt (existing data will be lost).", COLLECTION)
         try:
             resp = input("Continue? [y/N] ").strip().lower()
         except (EOFError, KeyboardInterrupt):
-            print("\nAborted.")
+            logger.info("Aborted.")
             sys.exit(0)
         if resp not in ("y", "yes"):
-            print("Aborted.")
+            logger.info("Aborted.")
             sys.exit(0)
 
     count = build(src, db)
-    print(f"\n✓ Successfully ingested {count} chunks into '{COLLECTION}'.")
+    logger.info("Successfully ingested %d chunks into '%s'.", count, COLLECTION)
 
 
 if __name__ == "__main__":

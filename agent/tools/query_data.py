@@ -14,8 +14,9 @@ from functools import lru_cache
 from pathlib import Path
 
 import pandas as pd
-from openai import OpenAI
+from openai import APIError, OpenAI
 from sqlalchemy import Engine, create_engine, text
+from sqlalchemy.exc import SQLAlchemyError
 
 from chatbi.few_shots import format_few_shots
 from chatbi.schema import SCHEMA
@@ -26,6 +27,9 @@ from configs.settings import settings
 
 PROMPT_PATH = Path(__file__).resolve().parents[2] / "prompts" / "text2sql.md"
 DB_PATH = Path(__file__).resolve().parents[2] / "chatbi" / "data" / "olist.db"
+
+# Module-level prompt template cache
+_PROMPT_TEMPLATE: str | None = None
 
 
 @lru_cache(maxsize=1)
@@ -45,8 +49,10 @@ class QueryResult:
 
 
 def _build_prompt(question: str) -> str:
-    template = PROMPT_PATH.read_text(encoding="utf-8")
-    return template.format(
+    global _PROMPT_TEMPLATE
+    if _PROMPT_TEMPLATE is None:
+        _PROMPT_TEMPLATE = PROMPT_PATH.read_text(encoding="utf-8")
+    return _PROMPT_TEMPLATE.format(
         schema=SCHEMA,
         few_shots=format_few_shots(),
         question=question,
@@ -68,6 +74,12 @@ def _ask_llm(client: OpenAI, prompt: str, feedback: str | None = None) -> str:
     return resp.choices[0].message.content or ""
 
 
+def _backoff_sleep(attempt: int, base_ms: int = 500) -> None:
+    """Exponential backoff: 500ms, 1s, 2s, … capped at 5s."""
+    delay = min(base_ms * (2 ** (attempt - 1)), 5000)
+    time.sleep(delay / 1000)
+
+
 def query_data(
     question: str,
     max_attempts: int | None = None,
@@ -83,29 +95,58 @@ def query_data(
     t0 = time.time()
 
     for attempt in range(1, max_attempts + 1):
+        # ── LLM call ──
         try:
             raw = _ask_llm(client, base_prompt, feedback)
-            sql = validate(raw)
-        except SQLValidationError as e:
-            trace.append({"raw": raw, "error": f"validate: {e}"})
+        except APIError as e:
+            trace.append({"error": f"LLM API error: {e}"})
+            if attempt < max_attempts:
+                _backoff_sleep(attempt)
             feedback = (
-                f"上一次输出未通过安全校验：{e}。"
-                f"原文：\n{raw}\n请重新输出一条合法的只读 SELECT SQL。"
+                f"上一步调用 LLM 失败（API 错误）：{e}\n"
+                "请重新输出一条合法的只读 SELECT SQL。"
             )
             continue
-        except Exception as e:  # noqa: BLE001 — LLM API errors are diverse
+        except Exception as e:
             trace.append({"error": f"LLM call failed: {e}"})
+            if attempt < max_attempts:
+                _backoff_sleep(attempt)
             feedback = (
                 f"上一步调用 LLM 失败：{e}\n"
                 "请重新输出一条合法的只读 SELECT SQL。"
             )
             continue
 
+        # ── Validation ──
+        try:
+            sql = validate(raw)
+        except SQLValidationError as e:
+            trace.append({"raw": raw, "error": f"validate: {e}"})
+            if attempt < max_attempts:
+                _backoff_sleep(attempt)
+            feedback = (
+                f"上一次输出未通过安全校验：{e}。"
+                f"原文：\n{raw}\n请重新输出一条合法的只读 SELECT SQL。"
+            )
+            continue
+
+        # ── Execution ──
         try:
             with engine.connect() as conn:
                 df = pd.read_sql(text(sql), conn)
-        except Exception as e:  # noqa: BLE001  DB errors are diverse
+        except SQLAlchemyError as e:
             trace.append({"sql": sql, "error": f"execute: {e}"})
+            if attempt < max_attempts:
+                _backoff_sleep(attempt)
+            feedback = (
+                f"上一条 SQL 执行报错：{e}\nSQL：\n{sql}\n"
+                "请根据错误信息修正后重新输出（同样只输出 SQL）。"
+            )
+            continue
+        except Exception as e:
+            trace.append({"sql": sql, "error": f"execute: {e}"})
+            if attempt < max_attempts:
+                _backoff_sleep(attempt)
             feedback = (
                 f"上一条 SQL 执行报错：{e}\nSQL：\n{sql}\n"
                 "请根据错误信息修正后重新输出（同样只输出 SQL）。"

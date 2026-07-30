@@ -1,13 +1,15 @@
 """Olist Brazilian e-commerce schema (SQLite). Used to build Text2SQL prompt.
 
 关系速览：
-    customers.customer_id           <-> orders.customer_id       (1-1)
+    customers.customer_id           <-> orders.customer_id       (1-N: 一个客户可以有多笔订单)
     orders.order_id                 <-> order_items.order_id     (1-N)
     orders.order_id                 <-> order_payments.order_id  (1-N)
     orders.order_id                 <-> order_reviews.order_id   (1-N)
     order_items.product_id          <-> products.product_id
     order_items.seller_id           <-> sellers.seller_id
     products.product_category_name  <-> category_translation.product_category_name  (葡萄牙语 -> 英文)
+
+注意：customer_id 是每笔订单分配的标识，不是自然人唯一标识。统计客户数时请使用 customer_unique_id。
 """
 
 SCHEMA = """\

@@ -1,0 +1,39 @@
+# Xiehaoyu-Agent dependency lock file
+# Generated: 2026-07-30
+# Python: 3.9.9
+# Platform: Windows 11
+#
+# Core dependencies (run `pip install -r requirements.lock` for reproducible builds)
+
+# LLM / Agent
+openai==2.47.0
+langgraph==0.6.11
+langgraph-checkpoint==2.1.2
+langgraph-prebuilt==0.6.5
+langgraph-sdk==0.2.9
+langchain-core==0.3.86
+
+# Data / SQL
+pandas==2.3.3
+SQLAlchemy==2.0.51
+sqlparse==0.5.5
+
+# RAG
+chromadb==1.5.9
+sentence-transformers==5.1.2
+
+# Visualization
+plotly==6.9.0
+
+# Backend
+pydantic==2.13.4
+pydantic_core==2.46.4
+pydantic-settings==2.11.0
+uvicorn==0.39.0
+python-dotenv==1.2.1
+
+# UI (optional — Streamlit quick-start)
+streamlit==1.50.0
+
+# Dev / Test
+pytest==8.4.2

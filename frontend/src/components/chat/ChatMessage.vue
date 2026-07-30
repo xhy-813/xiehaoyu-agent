@@ -160,9 +160,14 @@ const avatarState = computed<AvatarState>(() => {
 
 const renderedContent = computed(() => renderMarkdown(props.message.content))
 
-const isError = computed(() => props.message.content.startsWith('执行失败'))
+const isError = computed(() => props.message.error === true)
 
 function retry() {
+  if (isError.value) {
+    const idx = chat.messages.findIndex(m => m === props.message)
+    // Remove the failed message before retrying
+    chat.messages.splice(idx, 1)
+  }
   const idx = chat.messages.findIndex(m => m === props.message)
   const prevUser = chat.messages.slice(0, idx).reverse().find(m => m.role === 'user')
   if (prevUser && !chat.isStreaming) chat.sendMessage(prevUser.content)

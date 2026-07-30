@@ -8,7 +8,6 @@
 from __future__ import annotations
 
 import json
-import re
 from pathlib import Path
 
 from openai import OpenAI
@@ -19,28 +18,46 @@ from configs.settings import settings
 
 PLANNER_PROMPT_PATH = Path(__file__).resolve().parents[1] / "prompts" / "planner.md"
 
+# Module-level prompt cache — loaded once from disk
+_PLANNER_SYSTEM: str | None = None
+
 
 def _load_planner_system() -> str:
-    return PLANNER_PROMPT_PATH.read_text(encoding="utf-8")
+    global _PLANNER_SYSTEM
+    if _PLANNER_SYSTEM is None:
+        _PLANNER_SYSTEM = PLANNER_PROMPT_PATH.read_text(encoding="utf-8")
+    return _PLANNER_SYSTEM
 
 
 def _extract_json(raw: str) -> dict:
-    """Parse JSON from LLM output, handling markdown code blocks."""
+    """Parse JSON from LLM output, handling markdown code blocks and
+    nested braces (e.g. ``{"answer": "使用 Pandas (Python 库)"}``).
+
+    Uses brace counting to find the outermost JSON object rather than
+    a non-greedy regex, which would truncate on the first ``}``.
+    """
     raw = raw.strip()
     # Strip markdown code block wrapper
     if raw.startswith("```"):
         lines = raw.split("\n")
-        # Remove first line (```json or ```) and last line (```)
         lines = [l for l in lines[1:] if not l.strip() == "```"]
         raw = "\n".join(lines).strip()
     try:
         return json.loads(raw)
     except json.JSONDecodeError:
-        # Fallback: extract first {...} block
-        match = re.search(r"\{.*?\}", raw, re.DOTALL)
-        if match:
-            return json.loads(match.group())
-        raise ValueError(f"Planner output is not valid JSON: {raw}")
+        # Fallback: find the outermost {...} using brace counting
+        start = raw.find("{")
+        if start == -1:
+            raise ValueError(f"Planner output is not valid JSON: {raw}")
+        depth = 0
+        for i in range(start, len(raw)):
+            if raw[i] == "{":
+                depth += 1
+            elif raw[i] == "}":
+                depth -= 1
+                if depth == 0:
+                    return json.loads(raw[start : i + 1])
+        raise ValueError(f"Planner JSON has unmatched braces: {raw}")
 
 
 def plan(question: str, trace: list[dict], client: OpenAI | None = None) -> dict:

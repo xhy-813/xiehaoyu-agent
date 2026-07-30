@@ -1,0 +1,53 @@
+name: Test
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.9", "3.10", "3.11"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest pytest-cov
+          # FastAPI + JWT for backend tests
+          pip install fastapi uvicorn pyjwt httpx
+
+      - name: Run tests with coverage
+        env:
+          SKIP_CONFIG_VALIDATION: "1"
+          HF_HUB_OFFLINE: "1"
+          TRANSFORMERS_OFFLINE: "1"
+          DEEPSEEK_API_KEY: "sk-test-placeholder"
+          ACCESS_CODE: "test-code"
+          JWT_SECRET: "test-secret-for-ci-only"
+        run: |
+          pytest tests/ \
+            -v \
+            --tb=short \
+            --cov=. \
+            --cov-report=term-missing \
+            --ignore=tests/smoke_agent.py \
+            --ignore=tests/smoke_introduce_me.py \
+            --ignore=tests/smoke_text2sql.py \
+            --ignore=tests/smoke_viz_explain.py
+
+      - name: Check coverage threshold
+        run: |
+          coverage report --fail-under=30

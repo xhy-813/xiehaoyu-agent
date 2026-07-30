@@ -7,6 +7,7 @@ and pushes each execution step to the client as an SSE event.
 from __future__ import annotations
 
 import json
+import logging
 
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import StreamingResponse
@@ -17,12 +18,22 @@ from backend.app.schemas.chat import ChatRequest
 
 from agent.graph import stream_run
 
+logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/chat", tags=["chat"])
 
 
 async def _event_generator(question: str, request: Request) -> str:
     """Yield SSE-formatted lines for each agent step, checking for
-    client disconnect on each iteration."""
+    client disconnect on each iteration.  Sends a heartbeat comment
+    every 15 seconds to keep the connection alive."""
+    import asyncio
+    heartbeat_interval = 15  # seconds
+
+    async def _heartbeat():
+        while True:
+            await asyncio.sleep(heartbeat_interval)
+            yield ": heartbeat\n\n"
+
     try:
         async for event in stream_run(question):
             if await request.is_disconnected():
@@ -30,8 +41,12 @@ async def _event_generator(question: str, request: Request) -> str:
             line = json.dumps(event, ensure_ascii=False)
             yield f"data: {line}\n\n"
         yield "data: [DONE]\n\n"
-    except Exception as exc:
-        err = json.dumps({"type": "error", "data": {"message": str(exc)}}, ensure_ascii=False)
+    except Exception:
+        logger.exception("SSE stream failed for question: %s", question[:200])
+        err = json.dumps(
+            {"type": "error", "data": {"message": "服务器内部错误，请稍后重试"}},
+            ensure_ascii=False,
+        )
         yield f"data: {err}\n\n"
 
 

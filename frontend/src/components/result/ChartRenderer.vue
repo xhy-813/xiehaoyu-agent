@@ -4,23 +4,24 @@
 
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, watch } from 'vue'
+import type Plotly from 'plotly.js-dist'
 
 const props = defineProps<{ figureJson: string }>()
 
 const rootRef = ref<HTMLDivElement>()
-let chartInstance: any = null
+let chartInstance: Plotly.PlotlyHTMLElement | null = null
 let rafId = 0
 let resizeObserver: ResizeObserver | null = null
 
 // plotly.js-dist 体积大，按需动态加载（仅真正出图时加载一次）
-let plotlyPromise: Promise<any> | null = null
-let PlotlyRef: any = null
+let plotlyPromise: Promise<typeof Plotly> | null = null
+let PlotlyRef: typeof Plotly | null = null
 
-function ensurePlotly(): Promise<any> {
+function ensurePlotly(): Promise<typeof Plotly> {
   if (!plotlyPromise) {
     plotlyPromise = import('plotly.js-dist').then((m) => {
-      PlotlyRef = (m as any).default || m
-      return PlotlyRef
+      PlotlyRef = (m as { default: typeof Plotly }).default || m
+      return PlotlyRef!
     })
   }
   return plotlyPromise

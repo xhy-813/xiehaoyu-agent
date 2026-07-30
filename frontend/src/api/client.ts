@@ -2,6 +2,10 @@ import { useAuthStore } from '@/stores/auth'
 
 const BASE = '/api'
 
+export interface ApiError extends Error {
+  status: number
+}
+
 async function request<T = unknown>(
   path: string,
   options: RequestInit & { skipAuthRedirect?: boolean } = {},
@@ -23,8 +27,8 @@ async function request<T = unknown>(
   })
   if (!resp.ok) {
     const body = await resp.json().catch(() => ({}))
-    const detail = (body as any).detail || resp.statusText
-    const err = new Error(detail) as any
+    const detail = (body as Record<string, unknown>).detail || resp.statusText
+    const err = new Error(String(detail)) as ApiError
     err.status = resp.status
 
     // Global 401 handling: clear auth and redirect to login.

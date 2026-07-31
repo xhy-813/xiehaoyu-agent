@@ -10,6 +10,7 @@ Usage::
 
 from __future__ import annotations
 
+import logging
 import os
 from dataclasses import dataclass, field
 from functools import lru_cache
@@ -20,6 +21,7 @@ from chromadb.utils import embedding_functions
 
 from rag.constants import COLLECTION, EMBED_MODEL
 
+logger = logging.getLogger(__name__)
 
 # Prevent sentence-transformers from checking HuggingFace for config files
 # (model is already cached locally, no need to ping HF on every load)
@@ -30,6 +32,9 @@ os.environ.setdefault("TRANSFORMERS_OFFLINE", "1")
 # Resolved relative to this file for CWD independence
 _RETRIEVER_DIR = Path(__file__).resolve().parent
 DEFAULT_DB = _RETRIEVER_DIR / "data" / "chroma"
+
+# Default minimum cosine similarity for retrieval (0.3 = distance ≤ 0.7)
+DEFAULT_MIN_SIMILARITY = 0.3
 
 
 @dataclass
@@ -55,8 +60,6 @@ class Hit:
 
 
 # ── Collection (lazy, cached) ─────────────────────────────
-
-_cached_db_path: str | None = None
 
 
 @lru_cache(maxsize=1)
@@ -86,13 +89,19 @@ def count(db_path: Path | None = None) -> int:
         col = _get_collection(db)
         return col.count()
     except Exception:
+        logger.exception("Failed to count collection at %s", db)
         return 0
 
 
 # ── Retrieve ──────────────────────────────────────────────
 
 
-def retrieve(question: str, top_k: int = 5, db_path: Path | None = None) -> list[Hit]:
+def retrieve(
+    question: str,
+    top_k: int = 5,
+    db_path: Path | None = None,
+    min_similarity: float = DEFAULT_MIN_SIMILARITY,
+) -> list[Hit]:
     """Retrieve top-k chunks from the personal knowledge base.
 
     Args:
@@ -100,6 +109,8 @@ def retrieve(question: str, top_k: int = 5, db_path: Path | None = None) -> list
         top_k: Number of chunks to return.
         db_path: Path to ChromaDB persistence directory.  Defaults to
             ``rag/data/chroma/`` relative to the project root.
+        min_similarity: Minimum cosine similarity (0–1) to include a result.
+            Results below this threshold are filtered out.  Default: 0.3.
 
     Returns:
         List of ``Hit``, ordered by relevance (best first).  Returns an empty
@@ -110,24 +121,41 @@ def retrieve(question: str, top_k: int = 5, db_path: Path | None = None) -> list
     try:
         col = _get_collection(db)
     except Exception:
-        # Collection doesn't exist or is corrupted — return empty
+        logger.exception("Failed to get Chroma collection at %s", db)
         return []
 
     try:
         res = col.query(query_texts=[question], n_results=top_k)
     except Exception:
+        logger.exception("Chroma query failed for: %s", question[:200])
         return []
 
     docs = res.get("documents", [[]])[0]
     metas = res.get("metadatas", [[]])[0]
     dists = res.get("distances", [[]])[0]
 
-    return [
-        Hit(
-            content=d,
-            source=m.get("source", ""),
-            heading=m.get("heading", ""),
-            distance=float(s),
+    hits = []
+    low_quality = 0
+    for d, m, s in zip(docs, metas, dists):
+        sim = round(1.0 - float(s), 4)
+        if sim < min_similarity:
+            low_quality += 1
+            continue
+        hits.append(
+            Hit(
+                content=d,
+                source=m.get("source", ""),
+                heading=m.get("heading", ""),
+                distance=float(s),
+            )
         )
-        for d, m, s in zip(docs, metas, dists)
-    ]
+
+    if low_quality > 0:
+        logger.info(
+            "Filtered %d/%d chunks below similarity threshold %.2f",
+            low_quality,
+            low_quality + len(hits),
+            min_similarity,
+        )
+
+    return hits

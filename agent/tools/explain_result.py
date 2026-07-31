@@ -32,12 +32,15 @@ def explain_result(question: str, sql: str, df: pd.DataFrame) -> str:
         preview=_preview(df),
     )
     client = get_client()
-    resp = client.chat.completions.create(
-        model=settings.deepseek_model,
-        messages=[
-            {"role": "system", "content": "你是资深数据分析师，输出简洁中文洞察。"},
-            {"role": "user", "content": prompt},
-        ],
-        temperature=settings.explain_temperature,
-    )
-    return (resp.choices[0].message.content or "").strip()
+    try:
+        resp = client.chat.completions.create(
+            model=settings.deepseek_model,
+            messages=[
+                {"role": "system", "content": "你是资深数据分析师，输出简洁中文洞察。"},
+                {"role": "user", "content": prompt},
+            ],
+            temperature=settings.explain_temperature,
+        )
+        return (resp.choices[0].message.content or "").strip()
+    except Exception as exc:
+        raise RuntimeError(f"explain_result LLM call failed: {exc}") from exc

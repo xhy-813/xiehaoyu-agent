@@ -19,6 +19,7 @@ from typing import Any, AsyncIterator, TypedDict
 import pandas as pd
 import plotly.graph_objects as go
 from langgraph.graph import END, START, StateGraph
+from openai import APIError
 
 from agent.planner import plan
 from agent.tools.explain_result import explain_result
@@ -26,6 +27,8 @@ from agent.tools.introduce_me import introduce_me
 from agent.tools.query_data import query_data
 from agent.tools.visualize import visualize
 from configs.settings import settings
+
+logger = logging.getLogger(__name__)
 
 
 class AgentState(TypedDict, total=False):
@@ -41,6 +44,18 @@ class AgentState(TypedDict, total=False):
 
 
 MAX_STEPS = settings.max_agent_steps
+
+# ── Tool registry (single source of truth for tool dispatch) ──
+
+TOOLS: dict[str, Any] = {
+    "introduce_me": introduce_me,
+    "query_data": query_data,
+    "visualize": visualize,
+    "explain_result": explain_result,
+}
+
+# Tool names used by router and graph builder — derived from the registry
+_TOOL_NAMES = list(TOOLS.keys())
 
 
 # ── Helpers ──────────────────────────────────────────────
@@ -70,8 +85,10 @@ def _summarize(tool: str, result: Any) -> str:
 def _run_tool(tool: str, args: dict, state: AgentState) -> dict:
     """Execute one tool, return state patch.
 
-    Tool-level exceptions are caught and recorded as error trace entries
-    so the planner can decide whether to retry or finalize.
+    Expected tool-level errors (APIError, SQLValidationError, etc.) are
+    caught and recorded as error trace entries so the planner can decide
+    whether to retry or finalize.  Programming errors (TypeError, NameError,
+    etc.) propagate normally.
     """
     question = args.get("question", state["question"])
     trace = state.get("trace", [])
@@ -110,7 +127,8 @@ def _run_tool(tool: str, args: dict, state: AgentState) -> dict:
 
         raise ValueError(f"Unknown tool: {tool}")
 
-    except Exception as exc:
+    except (APIError, ValueError, RuntimeError, KeyError) as exc:
+        logger.exception("Tool %s failed", tool)
         err_msg = f"工具 {tool} 执行失败: {exc}"
         return {"trace": trace + [{"tool": tool, "args": args, "summary": err_msg, "artifact": None}]}
 
@@ -124,7 +142,8 @@ def planner_node(state: AgentState) -> dict:
     step = state.get("step", 0)
     try:
         decision = plan(state["question"], state.get("trace", []))
-    except Exception as exc:
+    except (APIError, ValueError, json.JSONDecodeError, RuntimeError) as exc:
+        logger.exception("Planner failed")
         return {
             "final_answer": f"Planner 调用失败: {exc}",
             "next_action": "finalize",
@@ -161,7 +180,13 @@ def finalize_node(state: AgentState) -> dict:
     if not answer:
         trace = state.get("trace", [])
         if trace:
-            answer = "已达到最大步数，最后结果：\n" + trace[-1].get("summary", "")
+            last = trace[-1]
+            last_summary = last.get("summary", "")
+            # If the last trace entry is an error, provide a more helpful fallback
+            if "失败" in last_summary or "错误" in last_summary:
+                answer = "抱歉，执行过程中遇到了问题：\n" + last_summary
+            else:
+                answer = "已达到最大步数，最后结果：\n" + last_summary
         else:
             answer = "未能生成回答。"
     return {"final_answer": answer}
@@ -181,14 +206,14 @@ def router(state: AgentState) -> str:
         return "finalize"
 
     tool = state.get("next_tool", "")
-    if tool in ("introduce_me", "query_data", "visualize", "explain_result"):
+    if tool in _TOOL_NAMES:
         return tool
 
-    logging.warning("Unknown tool '%s' from planner, falling back to finalize", tool)
+    logger.warning("Unknown tool '%s' from planner, falling back to finalize", tool)
     return "finalize"
 
 
-# ── Build ────────────────────────────────────────────────
+# ── Build (cached at module level) ───────────────────────
 
 
 def build_graph():
@@ -196,34 +221,26 @@ def build_graph():
     g = StateGraph(AgentState)
 
     g.add_node("planner", planner_node)
-    g.add_node("introduce_me", _make_tool_node("introduce_me"))
-    g.add_node("query_data", _make_tool_node("query_data"))
-    g.add_node("visualize", _make_tool_node("visualize"))
-    g.add_node("explain_result", _make_tool_node("explain_result"))
+    for name in _TOOL_NAMES:
+        g.add_node(name, _make_tool_node(name))
     g.add_node("finalize", finalize_node)
 
     g.add_edge(START, "planner")
 
-    g.add_conditional_edges(
-        "planner",
-        router,
-        {
-            "introduce_me": "introduce_me",
-            "query_data": "query_data",
-            "visualize": "visualize",
-            "explain_result": "explain_result",
-            "finalize": "finalize",
-        },
-    )
+    route_map = {name: name for name in _TOOL_NAMES}
+    route_map["finalize"] = "finalize"
+    g.add_conditional_edges("planner", router, route_map)
 
     # Tools loop back to planner
-    g.add_edge("introduce_me", "planner")
-    g.add_edge("query_data", "planner")
-    g.add_edge("visualize", "planner")
-    g.add_edge("explain_result", "planner")
+    for name in _TOOL_NAMES:
+        g.add_edge(name, "planner")
     g.add_edge("finalize", END)
 
     return g.compile()
+
+
+# Module-level cached graph — compiled once, reused by all calls
+_app = build_graph()
 
 
 # ── Serialization helpers ────────────────────────────────
@@ -269,14 +286,13 @@ async def stream_run(question: str) -> AsyncIterator[dict]:
     The ``data`` dict for ``tool_end`` events contains the full trace entry
     (including a serialized artifact), ready for SSE delivery.
     """
-    app = build_graph()
     initial_state: AgentState = {
         "question": question,
         "trace": [],
         "step": 0,
     }
 
-    async for event in app.astream(initial_state, stream_mode="updates"):
+    async for event in _app.astream(initial_state, stream_mode="updates"):
         for node_name, state_update in event.items():
             if node_name == "finalize":
                 yield {
@@ -288,7 +304,6 @@ async def stream_run(question: str) -> AsyncIterator[dict]:
                     },
                 }
             elif node_name == "planner":
-                # Expose planner decisions so the frontend can show "thinking…"
                 yield {
                     "type": "planner_decision",
                     "node": node_name,
@@ -303,6 +318,7 @@ async def stream_run(question: str) -> AsyncIterator[dict]:
                 new_trace = state_update.get("trace", [])
                 if new_trace:
                     latest = new_trace[-1]
+                    error = "失败" in latest.get("summary", "") or "错误" in latest.get("summary", "")
                     yield {
                         "type": "tool_end",
                         "node": node_name,
@@ -311,6 +327,7 @@ async def stream_run(question: str) -> AsyncIterator[dict]:
                             "args": latest.get("args", {}),
                             "summary": latest.get("summary", ""),
                             "artifact": _serialize_artifact(latest.get("artifact")),
+                            "status": "error" if error else "ok",
                         },
                     }
 
@@ -324,8 +341,7 @@ def run(question: str) -> dict:
     Returns:
         {"answer": str, "trace": list[dict], "steps": int}
     """
-    app = build_graph()
-    result = app.invoke({
+    result = _app.invoke({
         "question": question,
         "trace": [],
         "step": 0,

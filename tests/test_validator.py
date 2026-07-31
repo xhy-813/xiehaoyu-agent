@@ -79,4 +79,56 @@ class TestValidate:
 
     def test_rejects_statement_not_starting_with_select(self):
         with pytest.raises(SQLValidationError):
-            validate("-- comment\nSELECT 1;")
+            validate("EXPLAIN QUERY PLAN SELECT 1;")
+
+    def test_accepts_sql_with_leading_comment(self):
+        """H14: comments are stripped before structure check."""
+        result = validate("-- comment\nSELECT 1;")
+        assert "SELECT 1" in result
+
+    def test_accepts_sql_with_block_comment(self):
+        """H14: block comments are stripped before structure check."""
+        result = validate("/* block comment */\nSELECT 1;")
+        assert "SELECT 1" in result
+
+    def test_accepts_select_with_forbidden_keyword_in_string(self):
+        """H13: forbidden keywords inside string literals are not rejected."""
+        result = validate("SELECT 'INSERT' AS action_type;")
+        assert "action_type" in result
+
+    def test_accepts_select_with_drop_table_in_string(self):
+        """H13: forbidden keywords inside string literals are not rejected."""
+        result = validate("SELECT 'DROP TABLE' AS cmd;")
+        assert "cmd" in result
+
+    def test_rejects_explain(self):
+        """C1: EXPLAIN is now in the forbidden list."""
+        with pytest.raises(SQLValidationError):
+            validate("EXPLAIN SELECT 1;")
+
+    def test_rejects_explain_query_plan(self):
+        """C1: EXPLAIN QUERY PLAN is also rejected."""
+        with pytest.raises(SQLValidationError):
+            validate("EXPLAIN QUERY PLAN SELECT 1;")
+
+    def test_accepts_union(self):
+        """UNION is a valid SQLite read-only construct."""
+        result = validate("SELECT 1 UNION SELECT 2;")
+        assert "UNION" in result
+
+    def test_rejects_subquery_injection(self):
+        """DROP inside a subquery in comments should be rejected."""
+        with pytest.raises(SQLValidationError):
+            validate("SELECT 1; DROP TABLE orders;")
+
+    def test_accepts_window_function(self):
+        result = validate(
+            "SELECT customer_id, ROW_NUMBER() OVER (PARTITION BY customer_state ORDER BY order_purchase_timestamp) AS rn FROM orders;"
+        )
+        assert "ROW_NUMBER" in result
+
+    def test_accepts_group_by_with_having(self):
+        result = validate(
+            "SELECT customer_state, COUNT(*) AS cnt FROM customers GROUP BY customer_state HAVING cnt > 10;"
+        )
+        assert "HAVING" in result

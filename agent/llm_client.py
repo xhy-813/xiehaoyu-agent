@@ -23,4 +23,6 @@ def get_client() -> OpenAI:
     return OpenAI(
         api_key=settings.deepseek_api_key,
         base_url=settings.deepseek_base_url,
+        timeout=30.0,
+        max_retries=1,
     )

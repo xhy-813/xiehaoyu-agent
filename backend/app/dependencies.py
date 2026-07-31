@@ -16,7 +16,10 @@ def get_current_user(authorization: str = Header(...)) -> dict:
     try:
         scheme, token = authorization.split(" ", 1)
         if scheme.lower() != "bearer":
-            raise ValueError("scheme must be 'bearer'")
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Authorization scheme must be 'Bearer'",
+            )
         payload = jwt.decode(
             token,
             settings.jwt_secret,
@@ -24,6 +27,10 @@ def get_current_user(authorization: str = Header(...)) -> dict:
         )
         return payload
     except jwt.ExpiredSignatureError:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token 已过期，请重新登录")
-    except Exception:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="未授权访问")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Token 已过期，请重新登录"
+        )
+    except jwt.PyJWTError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="未授权访问"
+        )

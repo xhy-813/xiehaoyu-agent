@@ -44,7 +44,12 @@ const stateLabel: Record<AvatarState, string> = {
 const currentStateLabel = computed(() => stateLabel[props.state])
 
 // 动画 JSON 按状态懒加载（首屏只下载当前状态那份）
-const animationDataMap: Record<AvatarState, () => Promise<{ default: any }>> = {
+interface LottieData {
+  // Lottie animation JSON structure
+  [key: string]: unknown
+}
+
+const animationDataMap: Record<AvatarState, () => Promise<{ default: LottieData }>> = {
   idle: () => import('@/assets/lottie/idle.json'),
   thinking: () => import('@/assets/lottie/thinking.json'),
   answering: () => import('@/assets/lottie/answering.json'),

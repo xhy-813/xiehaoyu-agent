@@ -6,8 +6,9 @@ import secrets
 import time
 
 import jwt
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, Request, status
 
+from backend.app.deps.rate_limit import check_login_rate_limit
 from backend.app.schemas.auth import LoginRequest, TokenResponse
 from configs.settings import settings
 
@@ -15,8 +16,10 @@ router = APIRouter(prefix="/api/auth", tags=["auth"])
 
 
 @router.post("/login", response_model=TokenResponse)
-def login(body: LoginRequest) -> TokenResponse:
+def login(body: LoginRequest, request: Request) -> TokenResponse:
     """Validate access code and return a signed JWT."""
+    check_login_rate_limit(client_ip=request.client.host if request.client else "unknown")
+
     if not secrets.compare_digest(body.access_code, settings.access_code):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

@@ -30,6 +30,33 @@
     font-family: var(--font-sans);
     line-height: 1.5;
     overflow-x: hidden;
+    position: relative;
+  }
+
+  /* ===== MOUSE SPOTLIGHT (brittanychiang.com v5 signature) =====
+     独立的 DOM 元素 #spotlight（不用伪元素），fixed 铺满视口，
+     z-index 提到最高层 + pointer-events:none 不影响交互。
+     --mx/--my 由 JS 在 mousemove 时用 rAF 节流写入 :root。 */
+  :root { --mx: 50vw; --my: 50vh; }
+  #spotlight {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    pointer-events: none;
+    background: radial-gradient(
+      700px circle at var(--mx) var(--my),
+      rgba(100, 255, 218, 0.22),
+      rgba(100, 255, 218, 0.08) 25%,
+      transparent 65%
+    );
+    will-change: background;
+  }
+  @media (hover: none), (pointer: coarse) {
+    #spotlight { display: none; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    #spotlight { display: none; }
+    html { scroll-behavior: auto; }
   }
 
   /* ============================================
@@ -51,10 +78,12 @@
     max-width: 480px;
     display: flex;
     flex-direction: column;
-    padding: 10vh 40px 4vh 10vw;
+    justify-content: space-between; /* hero+nav 顶部聚拢，social 贴底 */
+    padding: 10vh 40px 6vh 10vw;
     z-index: 50;
     overflow-y: auto;
   }
+  .left-col-top { display: flex; flex-direction: column; }
   .left-col::-webkit-scrollbar { display: none; }
 
   /* Hero area in left col */
@@ -62,7 +91,7 @@
     display: flex;
     flex-direction: column;
     gap: 16px;
-    margin-bottom: 48px;
+    margin-bottom: 40px;
   }
   .hero-name {
     font-size: clamp(32px, 4.5vw, 56px);
@@ -91,7 +120,6 @@
     display: flex;
     flex-direction: column;
     gap: 0;
-    margin-bottom: auto;
   }
   .nav-item {
     display: flex;
@@ -219,26 +247,21 @@
   .stagger > .reveal:nth-child(5) { transition-delay: 0.32s; }
   .stagger > .reveal:nth-child(6) { transition-delay: 0.4s; }
 
-  /* ===== SECTION STYLES ===== */
+  /* ===== SECTION STYLES =====
+     brittanychiang.com v5 主内容区不展示大标题，
+     章节标题只在左侧导航露出。这里做成 sr-only（仅屏幕阅读器可读）。 */
   .section-header {
-    display: flex;
-    align-items: baseline;
-    gap: 12px;
-    margin-bottom: 36px;
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
   }
-  .section-number {
-    font-family: var(--font-mono);
-    font-size: 24px;
-    font-weight: 500;
-    color: var(--mint);
-    line-height: 1;
-  }
-  .section-title {
-    font-size: 28px;
-    font-weight: 700;
-    color: var(--white);
-    line-height: 1;
-  }
+  .section-number, .section-title { /* keep semantics only */ }
 
   /* About text paragraphs */
   .about-text p {
@@ -310,6 +333,12 @@
     background-color: rgba(17,34,64,0.6);
     box-shadow: 0 4px 24px rgba(0,0,0,0.2);
   }
+  /* Group-hover dim: when hovering the list, non-hovered items fade —
+     signature brittanychiang.com v5 focus effect */
+  .exp-list { transition: opacity 0.3s ease; }
+  .exp-list:hover .exp-item { opacity: 0.5; }
+  .exp-list:hover .exp-item:hover { opacity: 1; }
+  .exp-item { transition: background-color 0.25s ease, box-shadow 0.25s ease, opacity 0.3s ease; }
   .exp-item::after {
     content: '';
     position: absolute;
@@ -322,11 +351,13 @@
   .exp-item:last-child::after { display: none; }
   .exp-year {
     font-family: var(--font-mono);
-    font-size: 12.5px;
+    font-size: 11.5px;
     color: var(--slate);
-    width: 150px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    width: 110px;
     flex-shrink: 0;
-    padding-top: 3px;
+    padding-top: 5px;
   }
   .exp-detail { flex: 1; }
   .exp-role-line {
@@ -401,6 +432,14 @@
     background-color: rgba(17,34,64,0.5);
     box-shadow: 0 4px 24px rgba(0,0,0,0.18);
   }
+  /* Group-hover dim for projects list */
+  .proj-grid { transition: opacity 0.3s ease; }
+  .proj-grid:hover .proj-card { opacity: 0.5; }
+  .proj-grid:hover .proj-card:hover { opacity: 1; }
+  .proj-card { transition: background-color 0.25s ease, box-shadow 0.25s ease, opacity 0.3s ease; }
+  /* Thumbnail desaturate default → colorful on card hover (v5 手法) */
+  .proj-thumb { filter: saturate(0.55) contrast(1.02); transition: filter 0.3s ease; }
+  .proj-card:hover .proj-thumb { filter: saturate(1) contrast(1); }
   .proj-thumb {
     width: 110px;
     height: 78px;
@@ -583,6 +622,22 @@
   }
   .ai-btn-large:hover svg { transform: translateX(4px); }
 
+  /* Inline CTA — 替换原来的大 banner，更贴近 brittanychiang.com "View Full Archive →" 的克制风格 */
+  .inline-cta {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--white);
+    text-decoration: none;
+    padding-bottom: 4px;
+    border-bottom: 1px solid var(--mint);
+    transition: color 0.2s ease, gap 0.25s ease;
+  }
+  .inline-cta:hover { color: var(--mint); gap: 12px; }
+  .inline-cta svg { width: 16px; height: 16px; }
+
   /* Footer */
   .footer {
     text-align: center;
@@ -650,11 +705,15 @@
 </head>
 <body>
 
+<!-- Mouse spotlight overlay (brittanychiang.com v5 signature) -->
+<div id="spotlight" aria-hidden="true"></div>
+
 <div class="app-layout">
 
   <!-- ==================== LEFT COLUMN ==================== -->
   <aside class="left-col">
 
+    <div class="left-col-top">
     <div class="hero-area">
       <h1 class="hero-name">谢浩宇</h1>
       <p class="hero-title">数据工程师 · AI 实践者</p>
@@ -679,6 +738,7 @@
         <span class="nav-label">AI 问答<span class="ai-dot"></span></span>
       </a>
     </nav>
+    </div>
 
     <div class="social-row">
       <a href="#" title="GitHub">
@@ -736,8 +796,8 @@
           <span class="exp-year">2026.04 — 至今</span>
           <div class="exp-detail">
             <div class="exp-role-line">
-              <span class="exp-role">数据实习生</span>
-              <span class="exp-company"><a href="#">龙腾出行</a> · AI 研发部</span>
+              <span class="exp-role">数据实习生 ·</span>
+              <span class="exp-company"><a href="#">龙腾出行</a></span>
             </div>
             <p class="exp-desc">基于 DataPipeline 分层架构打通多源 API 采集清洗入库全链路，覆盖国内外十万余条数据；设计四层数据完整性评估脚本并搭建 FineBI 实时看板；对 POI 匹配失败案例做聚类归因，定位根因后准确率提升 62%；基于千问大模型搭建「生成→验证→重生成」AI 清洗流程。</p>
             <div class="exp-tags">
@@ -746,6 +806,23 @@
               <span class="tag-pill">FineBI</span>
               <span class="tag-pill">归因分析</span>
               <span class="tag-pill">千问大模型</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="exp-item reveal">
+          <span class="exp-year">2024.09 — 至今</span>
+          <div class="exp-detail">
+            <div class="exp-role-line">
+              <span class="exp-role">本科在读 ·</span>
+              <span class="exp-company"><a href="#">吉首大学</a></span>
+            </div>
+            <p class="exp-desc">数据科学与大数据技术专业，专业排名前 5%。核心课程涵盖数据结构、数据库原理、机器学习、分布式计算（Hadoop / Spark）、数据可视化等。参与数学建模、数据分析、Kaggle 竞赛，多次获得校级和省级奖项。</p>
+            <div class="exp-tags">
+              <span class="tag-pill">Hadoop</span>
+              <span class="tag-pill">Spark</span>
+              <span class="tag-pill">机器学习</span>
+              <span class="tag-pill">数学建模</span>
             </div>
           </div>
         </div>
@@ -860,6 +937,34 @@
 
 <!-- ===== SCROLL REVEAL SCRIPT ===== -->
 <script>
+  // ---- Mouse spotlight: update --mx / --my on #spotlight ----
+  (function () {
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const coarse = window.matchMedia('(pointer: coarse)').matches;
+    if (reduce || coarse) return;
+
+    const el = document.getElementById('spotlight');
+    if (!el) return;
+
+    let mx = window.innerWidth / 2;
+    let my = window.innerHeight / 2;
+    let ticking = false;
+
+    function update() {
+      el.style.setProperty('--mx', mx + 'px');
+      el.style.setProperty('--my', my + 'px');
+      ticking = false;
+    }
+    update();
+    window.addEventListener('mousemove', (e) => {
+      mx = e.clientX;
+      my = e.clientY;
+      if (!ticking) {
+        requestAnimationFrame(update);
+        ticking = true;
+      }
+    }, { passive: true });
+  })();
   // IntersectionObserver for scroll-reveal animations
   const observerOptions = {
     root: null,

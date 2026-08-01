@@ -27,7 +27,25 @@
     display: flex;
     flex-direction: column;
     overflow: hidden;
+    position: relative;
   }
+
+  /* ===== MOUSE SPOTLIGHT ===== */
+  #spotlight {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    pointer-events: none;
+    background: radial-gradient(
+      700px circle at var(--mx, 50vw) var(--my, 50vh),
+      rgba(100, 255, 218, 0.22),
+      rgba(100, 255, 218, 0.08) 25%,
+      transparent 65%
+    );
+    will-change: background;
+  }
+  @media (hover: none), (pointer: coarse) { #spotlight { display: none; } }
+  @media (prefers-reduced-motion: reduce) { #spotlight { display: none; } }
 
   /* ===== CHAT HEADER ===== */
   .chat-header {
@@ -233,6 +251,16 @@
     box-shadow: 0 4px 14px rgba(100,255,218,0.1);
   }
 
+  /* Group-hover dim: chips inside a suggestions row */
+  .suggestions { transition: opacity 0.3s ease; }
+  .suggestions:hover .chip { opacity: 0.55; }
+  .suggestions:hover .chip:hover { opacity: 1; }
+
+  /* Group-hover dim: sibling messages in the messages area */
+  .messages-area { transition: opacity 0.3s ease; }
+  .messages-area:hover .msg-row { transition: opacity 0.3s ease; opacity: 0.55; }
+  .messages-area:hover .msg-row:hover { opacity: 1; }
+
   /* Typing indicator */
   .typing-row {
     display: flex;
@@ -350,6 +378,9 @@
 </head>
 <body>
 
+<!-- Mouse spotlight overlay -->
+<div id="spotlight" aria-hidden="true"></div>
+
 <!-- ===== HEADER ===== -->
 <header class="chat-header">
   <div class="chat-header-left">
@@ -466,6 +497,26 @@
 </div>
 
 <script>
+  // ---- Mouse spotlight (rAF-throttled) ----
+  (function () {
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const coarse = window.matchMedia('(pointer: coarse)').matches;
+    if (reduce || coarse) return;
+    const el = document.getElementById('spotlight');
+    if (!el) return;
+    let mx = innerWidth / 2, my = innerHeight / 2, ticking = false;
+    function update() {
+      el.style.setProperty('--mx', mx + 'px');
+      el.style.setProperty('--my', my + 'px');
+      ticking = false;
+    }
+    update();
+    addEventListener('mousemove', (e) => {
+      mx = e.clientX; my = e.clientY;
+      if (!ticking) { requestAnimationFrame(update); ticking = true; }
+    }, { passive: true });
+  })();
+
   // Auto-resize textarea
   const textarea = document.querySelector('.input-box');
   textarea.addEventListener('input', function() {

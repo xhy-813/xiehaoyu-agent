@@ -1,0 +1,903 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>谢浩宇 — 数据工程师 & AI 实践者</title>
+<style>
+  /* ===== RESET ===== */
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --navy: #0a192f;
+    --navy-light: #112240;
+    --navy-lighter: #1d3461;
+    --mint: #64ffda;
+    --slate: #8892b0;
+    --light-slate: #ccd6f6;
+    --white: #e6f1ff;
+    --font-mono: 'Fira Code', 'SF Mono', 'Cascadia Code', 'Consolas', monospace;
+    --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', Inter, sans-serif;
+    --left-width: 42%;
+    --right-width: 58%;
+  }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background-color: var(--navy);
+    color: var(--white);
+    font-family: var(--font-sans);
+    line-height: 1.5;
+    overflow-x: hidden;
+  }
+
+  /* ============================================
+     LAYOUT — Left Hero/Nav + Right Content
+     (Matches brittanychiang.com screenshot)
+     ============================================ */
+  .app-layout {
+    display: flex;
+    min-height: 100vh;
+  }
+
+  /* ===== LEFT COLUMN (Fixed) ===== */
+  .left-col {
+    position: fixed;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: var(--left-width);
+    max-width: 480px;
+    display: flex;
+    flex-direction: column;
+    padding: 10vh 40px 4vh 10vw;
+    z-index: 50;
+    overflow-y: auto;
+  }
+  .left-col::-webkit-scrollbar { display: none; }
+
+  /* Hero area in left col */
+  .hero-area {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    margin-bottom: 48px;
+  }
+  .hero-name {
+    font-size: clamp(32px, 4.5vw, 56px);
+    font-weight: 700;
+    color: var(--white);
+    letter-spacing: -0.02em;
+    line-height: 1.1;
+  }
+  .hero-title {
+    font-size: clamp(16px, 2vw, 22px);
+    font-weight: 500;
+    color: var(--slate);
+    margin-top: -4px;
+  }
+  .hero-tagline {
+    font-size: clamp(14px, 1.6vw, 17px);
+    color: var(--slate);
+    line-height: 1.65;
+    max-width: 360px;
+    padding-top: 12px;
+    border-top: 1px solid rgba(136,146,176,0.15);
+  }
+
+  /* Nav in left col — horizontal lines + labels */
+  .left-nav {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    margin-bottom: auto;
+  }
+  .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    padding: 13px 0;
+    text-decoration: none;
+    transition: all 0.3s ease;
+    position: relative;
+  }
+  .nav-line {
+    width: 44px;
+    height: 1px;
+    background: var(--slate);
+    transition: all 0.3s ease;
+    flex-shrink: 0;
+    position: relative;
+  }
+  /* Animated line fill on hover / active */
+  .nav-item:hover .nav-line,
+  .nav-item.active .nav-line {
+    width: 70px;
+    background: #e6f1ff;
+    box-shadow: none;
+  }
+  .nav-label {
+    font-family: var(--font-mono);
+    font-size: 12.5px;
+    font-weight: 500;
+    color: var(--slate);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    transition: all 0.25s ease;
+    white-space: nowrap;
+  }
+  .nav-item:hover .nav-label,
+  .nav-item.active .nav-label {
+    color: var(--mint);
+    transform: translateX(4px);
+  }
+  .nav-item.ai-entry .nav-label {
+    color: var(--mint);
+    font-weight: 700;
+  }
+  .nav-item.ai-entry .nav-line {
+    background: #e6f1ff;
+    width: 60px;
+  }
+  .ai-dot {
+    display: inline-block;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--mint);
+    margin-left: 8px;
+    vertical-align: middle;
+    animation: pulse-glow 2s infinite;
+  }
+  @keyframes pulse-glow {
+    0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(100,255,218,0.4); }
+    50% { opacity: 0.6; box-shadow: 0 0 0 5px rgba(100,255,218,0); }
+  }
+
+  /* Social icons row */
+  .social-row {
+    display: flex;
+    gap: 20px;
+    align-items: center;
+    padding-top: 24px;
+  }
+  .social-row a {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--slate);
+    text-decoration: none;
+    transition: all 0.3s ease;
+    border: 1px solid transparent;
+    font-size: 17px;
+  }
+  .social-row a svg {
+    width: 19px;
+    height: 19px;
+    stroke: currentColor;
+    fill: none;
+    stroke-width: 1.8;
+  }
+  .social-row a:hover {
+    color: var(--mint);
+    border-color: rgba(100,255,218,0.25);
+    transform: translateY(-3px);
+    box-shadow: 0 4px 14px rgba(100,255,218,0.12);
+  }
+
+  /* ===== RIGHT COLUMN (Scrollable) ===== */
+  .right-col {
+    margin-left: var(--left-width);
+    width: var(--right-width);
+    min-width: 0;
+    padding: 10vh 8vw 10vh 4vw;
+    display: flex;
+    flex-direction: column;
+    gap: 80px;
+  }
+
+  /* ===== SCROLL REVEAL ANIMATIONS ===== */
+  .reveal {
+    opacity: 0;
+    transform: translateY(28px);
+    transition: opacity 0.7s cubic-bezier(0.16, 1, 0.3, 1),
+                transform 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .reveal.visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  /* Stagger children */
+  .stagger > .reveal:nth-child(1) { transition-delay: 0s; }
+  .stagger > .reveal:nth-child(2) { transition-delay: 0.08s; }
+  .stagger > .reveal:nth-child(3) { transition-delay: 0.16s; }
+  .stagger > .reveal:nth-child(4) { transition-delay: 0.24s; }
+  .stagger > .reveal:nth-child(5) { transition-delay: 0.32s; }
+  .stagger > .reveal:nth-child(6) { transition-delay: 0.4s; }
+
+  /* ===== SECTION STYLES ===== */
+  .section-header {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    margin-bottom: 36px;
+  }
+  .section-number {
+    font-family: var(--font-mono);
+    font-size: 24px;
+    font-weight: 500;
+    color: var(--mint);
+    line-height: 1;
+  }
+  .section-title {
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--white);
+    line-height: 1;
+  }
+
+  /* About text paragraphs */
+  .about-text p {
+    font-size: 16px;
+    color: var(--slate);
+    line-height: 1.75;
+    margin-bottom: 20px;
+  }
+  .about-text p:last-child { margin-bottom: 0; }
+  .about-text strong { color: var(--light-slate); font-weight: 600; }
+  .about-text a {
+    color: var(--mint);
+    text-decoration: none;
+    border-bottom: 1px solid transparent;
+    transition: border-color 0.2s;
+  }
+  .about-text a:hover { border-bottom-color: var(--mint); }
+
+  /* Skills grid */
+  .skills-section {
+    margin-top: 36px;
+    padding-top: 28px;
+    border-top: 1px solid rgba(136,146,176,0.1);
+  }
+  .skills-title {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    color: var(--mint);
+    font-weight: 500;
+    margin-bottom: 16px;
+  }
+  .skills-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px 28px;
+  }
+  .skill-tag {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    color: var(--light-slate);
+    position: relative;
+    padding-left: 16px;
+  }
+  .skill-tag::before {
+    content: '▹';
+    position: absolute;
+    left: 0;
+    color: var(--mint);
+  }
+
+  /* Experience items */
+  .exp-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+  .exp-item {
+    display: flex;
+    gap: 24px;
+    padding: 26px 20px;
+    position: relative;
+    border-radius: 10px;
+    margin: 0 -20px;
+    transition: background-color 0.25s ease, box-shadow 0.25s ease;
+    cursor: default;
+  }
+  /* Hover: light navy panel background — matches original site */
+  .exp-item:hover {
+    background-color: rgba(17,34,64,0.6);
+    box-shadow: 0 4px 24px rgba(0,0,0,0.2);
+  }
+  .exp-item::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, rgba(136,146,176,0.08), transparent 70%);
+  }
+  .exp-item:last-child::after { display: none; }
+  .exp-year {
+    font-family: var(--font-mono);
+    font-size: 12.5px;
+    color: var(--slate);
+    width: 150px;
+    flex-shrink: 0;
+    padding-top: 3px;
+  }
+  .exp-detail { flex: 1; }
+  .exp-role-line {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-bottom: 8px;
+  }
+  .exp-role {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--white);
+  }
+  .exp-company {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--mint);
+  }
+  .exp-company a { color: var(--mint); text-decoration: none; }
+  .exp-company a:hover { text-decoration: underline; }
+  .exp-desc {
+    font-size: 14.5px;
+    color: var(--slate);
+    line-height: 1.65;
+    margin-bottom: 14px;
+  }
+  .exp-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  /* ===== PILL BADGES (matches original site tech tags) ===== */
+  .tag-pill {
+    display: inline-flex;
+    align-items: center;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--mint);
+    background: rgba(100,255,218,0.08);
+    border: 1px solid rgba(100,255,218,0.18);
+    border-radius: 20px;
+    padding: 4px 14px;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+  }
+  .tag-pill:hover {
+    background: rgba(100,255,218,0.15);
+    border-color: rgba(100,255,218,0.35);
+    transform: translateY(-1px);
+  }
+
+  /* ===== PROJECT LIST — horizontal rows with thumbnail (matches original) ===== */
+  .proj-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+  .proj-card {
+    display: flex;
+    gap: 22px;
+    padding: 24px 20px;
+    border-radius: 10px;
+    margin: 0 -20px;
+    transition: background-color 0.25s ease, box-shadow 0.25s ease;
+    cursor: default;
+    position: relative;
+  }
+  /* Hover: light navy panel — matches original screenshot 2 */
+  .proj-card:hover {
+    background-color: rgba(17,34,64,0.5);
+    box-shadow: 0 4px 24px rgba(0,0,0,0.18);
+  }
+  .proj-thumb {
+    width: 110px;
+    height: 78px;
+    border-radius: 6px;
+    flex-shrink: 0;
+    overflow: hidden;
+    background: var(--navy-lighter);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+  }
+  .proj-thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.3s ease;
+  }
+  .proj-card:hover .proj-thumb img {
+    transform: scale(1.04);
+  }
+  /* Fallback icon when no image */
+  .proj-thumb-icon {
+    font-size: 22px;
+    color: var(--slate);
+    opacity: 0.4;
+  }
+  .proj-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-width: 0;
+  }
+  .proj-title-row {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+  .proj-title {
+    font-size: 19px;
+    font-weight: 600;
+    color: var(--white);
+    line-height: 1.3;
+  }
+  .proj-link-icon {
+    font-size: 14px;
+    color: var(--mint);
+    text-decoration: none;
+    transition: transform 0.2s ease;
+    display: inline-block;
+  }
+  .proj-link-icon:hover { transform: translateX(3px); }
+  .proj-desc {
+    font-size: 13.5px;
+    color: var(--slate);
+    line-height: 1.6;
+  }
+  /* Star / stat line */
+  .proj-stat {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--slate);
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+  .proj-stat svg {
+    width: 13px;
+    height: 13px;
+    stroke: var(--mint);
+    fill: none;
+    stroke-width: 2;
+  }
+  .proj-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 7px;
+    margin-top: 2px;
+  }
+
+  /* AI Banner — prominent entry */
+  .ai-banner {
+    background: linear-gradient(135deg, rgba(100,255,218,0.07) 0%, rgba(100,255,218,0.02) 50%, transparent 100%);
+    border: 1px solid rgba(100,255,218,0.16);
+    border-radius: 14px;
+    padding: 46px 42px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 36px;
+    position: relative;
+    overflow: hidden;
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
+  }
+  .ai-banner:hover {
+    border-color: rgba(100,255,218,0.3);
+    box-shadow: 0 0 40px rgba(100,255,218,0.06);
+  }
+  .ai-banner::before {
+    content: '';
+    position: absolute;
+    top: -60%;
+    right: -15%;
+    width: 420px;
+    height: 420px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(100,255,218,0.07) 0%, transparent 70%);
+    pointer-events: none;
+    animation: float-blob 8s ease-in-out infinite;
+  }
+  @keyframes float-blob {
+    0%, 100% { transform: translate(0, 0); }
+    33% { transform: translate(15px, -20px); }
+    66% { transform: translate(-10px, 15px); }
+  }
+  .ai-info { position: relative; z-index: 1; }
+  .ai-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-family: var(--font-mono);
+    font-size: 11.5px;
+    color: var(--mint);
+    background: rgba(100,255,218,0.1);
+    padding: 5px 13px;
+    border-radius: 20px;
+    margin-bottom: 16px;
+    font-weight: 500;
+    border: 1px solid rgba(100,255,218,0.15);
+  }
+  .ai-badge::before {
+    content: '';
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--mint);
+    animation: pulse-glow 2s infinite;
+  }
+  .ai-info h3 {
+    font-size: 27px;
+    font-weight: 700;
+    color: var(--white);
+    margin-bottom: 8px;
+  }
+  .ai-info p {
+    font-size: 15px;
+    color: var(--slate);
+    line-height: 1.6;
+    max-width: 450px;
+  }
+  .ai-btn-large {
+    position: relative;
+    z-index: 1;
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 16px 34px;
+    background: var(--mint);
+    color: var(--navy);
+    font-size: 15px;
+    font-weight: 700;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    text-decoration: none;
+    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .ai-btn-large:hover {
+    transform: translateY(-3px) scale(1.03);
+    box-shadow: 0 10px 32px rgba(100,255,218,0.35);
+  }
+  .ai-btn-large svg {
+    width: 18px;
+    height: 18px;
+    transition: transform 0.3s ease;
+  }
+  .ai-btn-large:hover svg { transform: translateX(4px); }
+
+  /* Footer */
+  .footer {
+    text-align: center;
+    padding-top: 30px;
+    border-top: 1px solid rgba(136,146,176,0.1);
+  }
+  .footer p {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--slate);
+  }
+  .footer a { color: var(--mint); text-decoration: none; }
+  .footer a:hover { text-decoration: underline; }
+
+  /* ===== RESPONSIVE ===== */
+  @media (max-width: 1200px) {
+    :root { --left-width: 38%; --right-width: 62%; }
+    .left-col { padding-left: 6vw; }
+    .right-col { padding-right: 6vw; }
+  }
+  @media (max-width: 980px) {
+    .app-layout { flex-direction: column; }
+    .left-col {
+      position: relative;
+      width: 100%;
+      max-width: none;
+      padding: 8vh 6vw 4vh;
+      border-bottom: 1px solid rgba(136,146,176,0.1);
+    }
+    .hero-area { margin-bottom: 32px; }
+    .hero-tagline { max-width: 100%; }
+    .left-nav { flex-direction: row; flex-wrap: wrap; gap: 0 8px; }
+    .nav-item { padding: 10px 0; }
+    .nav-line { width: 32px; }
+    .social-row { justify-content: center; padding-top: 20px; }
+    .right-col {
+      margin-left: 0;
+      width: 100%;
+      padding: 6vh 6vw;
+      gap: 56px;
+    }
+    .proj-grid { gap: 0; }
+    .proj-card { flex-direction: column; padding: 20px; margin: 0; }
+    .proj-thumb { width: 100%; height: 160px; }
+    .ai-banner { flex-direction: column; text-align: center; padding: 36px 28px; }
+    .ai-info p { max-width: 100%; }
+  }
+  @media (max-width: 480px) {
+    .left-col { padding: 6vh 5vw; }
+    .right-col { padding: 5vh 5vw; }
+    .exp-item { flex-direction: column; gap: 6px; }
+    .exp-year { width: auto; }
+    .skills-grid { grid-template-columns: 1fr; }
+  }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: var(--navy); }
+  ::-webkit-scrollbar-thumb { background: var(--navy-lighter); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--slate); }
+
+  /* Selection color */
+  ::selection { background: rgba(100,255,218,0.2); color: var(--white); }
+</style>
+</head>
+<body>
+
+<div class="app-layout">
+
+  <!-- ==================== LEFT COLUMN ==================== -->
+  <aside class="left-col">
+
+    <div class="hero-area">
+      <h1 class="hero-name">谢浩宇</h1>
+      <p class="hero-title">数据工程师 · AI 实践者</p>
+      <p class="hero-tagline">我专注于数据工程与智能分析，擅长从原始数据中提炼洞察，用 AI 工具放大生产力，构建可解释、可落地的数据产品。</p>
+    </div>
+
+    <nav class="left-nav stagger">
+      <a href="#about" class="nav-item active reveal">
+        <span class="nav-line"></span>
+        <span class="nav-label">关于</span>
+      </a>
+      <a href="#experience" class="nav-item reveal">
+        <span class="nav-line"></span>
+        <span class="nav-label">经历</span>
+      </a>
+      <a href="#projects" class="nav-item reveal">
+        <span class="nav-line"></span>
+        <span class="nav-label">项目</span>
+      </a>
+      <a href="#ai-chat" class="nav-item ai-entry reveal">
+        <span class="nav-line"></span>
+        <span class="nav-label">AI 问答<span class="ai-dot"></span></span>
+      </a>
+    </nav>
+
+    <div class="social-row">
+      <a href="#" title="GitHub">
+        <svg viewBox="0 0 24 24"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/></svg>
+      </a>
+      <a href="#" title="Gitee">
+        <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 15h-2v-6h2v6zm0-8h-2V7h2v2zm4 8h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
+      </a>
+      <a href="mailto:xiehaoyu12138@163.com" title="Email">
+        <svg viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 6-10 7L2 6"/></svg>
+      </a>
+      <a href="#" title="Blog">
+        <svg viewBox="0 0 24 24"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="M2 2l7.586 7.586"/><circle cx="11" cy="11" r="2"/></svg>
+      </a>
+    </div>
+
+  </aside>
+
+  <!-- ==================== RIGHT COLUMN ==================== -->
+  <main class="right-col">
+
+    <!-- ABOUT -->
+    <section id="about" class="reveal">
+      <div class="section-header">
+        <span class="section-number">01.</span>
+        <h2 class="section-title">关于</h2>
+      </div>
+      <div class="about-text">
+        <p>你好！我是<strong>谢浩宇</strong>，来自吉首大学<strong>数据科学与大数据技术</strong>专业，目前本科在读，专业排名前 <strong>5%</strong>。</p>
+        <p>我对数据的热情始于对「数字背后故事」的好奇——从一条 SQL 查询到完整的数仓分层，从一张散点图到驱动业务决策的指标体系，我喜欢把杂乱的数据变成清晰的洞察。</p>
+        <p>目前在 <strong>龙腾出行 AI 研发部</strong>担任数据实习生，负责数据管道建设、数据质量监控、归因分析和 AI 赋能等工作。此前独立开发了 <strong>Xiehaoyu-Agent</strong> 个人智能体系统——一个基于 LLM Agent 的 ChatBI 应用，集成了 RAG 知识库检索、Text2SQL 引擎和自动可视化能力。</p>
+        <p>工作之外，我喜欢研究新的 AI 工具和工作流，探索如何将大语言模型融入日常数据分析流程中。也热衷于参加数学建模和数据竞赛，享受从问题抽象到方案落地全过程。</p>
+      </div>
+      <div class="skills-section">
+        <p class="skills-title">技术栈 / Tech Stack</p>
+        <div class="skills-grid">
+          <span class="skill-tag">Python</span><span class="skill-tag">SQL</span>
+          <span class="skill-tag">Pandas / NumPy</span><span class="skill-tag">Hadoop / Hive</span>
+          <span class="skill-tag">Spark</span><span class="skill-tag">LangGraph</span>
+          <span class="skill-tag">FastAPI</span><span class="skill-tag">Vue 3</span>
+          <span class="skill-tag">Tableau / FineBI</span><span class="skill-tag">ChromaDB</span>
+          <span class="skill-tag">DeepSeek / Claude</span><span class="skill-git">Git / Docker</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- EXPERIENCE -->
+    <section id="experience" class="reveal">
+      <div class="section-header">
+        <span class="section-number">02.</span>
+        <h2 class="section-title">经历</h2>
+      </div>
+      <div class="exp-list stagger">
+        <div class="exp-item reveal">
+          <span class="exp-year">2026.04 — 至今</span>
+          <div class="exp-detail">
+            <div class="exp-role-line">
+              <span class="exp-role">数据实习生</span>
+              <span class="exp-company"><a href="#">龙腾出行</a> · AI 研发部</span>
+            </div>
+            <p class="exp-desc">基于 DataPipeline 分层架构打通多源 API 采集清洗入库全链路，覆盖国内外十万余条数据；设计四层数据完整性评估脚本并搭建 FineBI 实时看板；对 POI 匹配失败案例做聚类归因，定位根因后准确率提升 62%；基于千问大模型搭建「生成→验证→重生成」AI 清洗流程。</p>
+            <div class="exp-tags">
+              <span class="tag-pill">Python</span>
+              <span class="tag-pill">DataPipeline</span>
+              <span class="tag-pill">FineBI</span>
+              <span class="tag-pill">归因分析</span>
+              <span class="tag-pill">千问大模型</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- PROJECTS -->
+    <section id="projects" class="reveal">
+      <div class="section-header">
+        <span class="section-number">03.</span>
+        <h2 class="section-title">项目</h2>
+      </div>
+      <div class="proj-grid stagger">
+
+        <!-- Project 1: Xiehaoyu-Agent -->
+        <article class="proj-card reveal">
+          <div class="proj-thumb" style="background: linear-gradient(135deg, #1a3a5c, #0d2137);">
+            <span class="proj-thumb-icon">🤖</span>
+          </div>
+          <div class="proj-info">
+            <div class="proj-title-row">
+              <h3 class="proj-title">Xiehaoyu-Agent</h3>
+              <a href="https://gitee.com/xiehaoyu12138/xiehaoyu-agent/tree/main/" target="_blank" class="proj-link-icon">↗</a>
+            </div>
+            <p class="proj-desc">基于 LLM Agent 的个人智能体与 ChatBI 系统。采用 LangGraph 状态机驱动多 Tool 编排，集成 RAG 个人知识库检索、Text2SQL 自然语言查数引擎（对接 Olist 电商 99,441 订单）、自动可视化系统（5 种图表类型）和结果解读模块。前后端分离：FastAPI + SSE 流式推送 + Vue 3 + Naive UI 暗色主题。</p>
+            <span class="proj-stat"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg> Gitee Star</span>
+            <div class="proj-tags">
+              <span class="tag-pill">Python</span><span class="tag-pill">LangGraph</span><span class="tag-pill">DeepSeek</span><span class="tag-pill">ChromaDB</span><span class="tag-pill">FastAPI</span><span class="tag-pill">Vue 3</span><span class="tag-pill">Plotly</span><span class="tag-pill">Docker</span>
+            </div>
+          </div>
+        </article>
+
+        <!-- Project 2: 抖音种草复盘 -->
+        <article class="proj-card reveal">
+          <div class="proj-thumb" style="background: linear-gradient(135deg, #2d1f3d, #151020);">
+            <span class="proj-thumb-icon">📊</span>
+          </div>
+          <div class="proj-info">
+            <div class="proj-title-row">
+              <h3 class="proj-title">抖音达人种草复盘与策略分析</h3>
+              <a href="#" class="proj-link-icon">↗</a>
+            </div>
+            <p class="proj-desc">对 447.5 万投放费用、1.2 亿声量进行深度归因分析。竞品对标发现转化率达行业均值 6 倍，单位成本仅为行业 1/12。提出小博主优先策略，建立实时数据监控看板保障 ROI。</p>
+            <span class="proj-stat"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg> 447.5w 投放</span>
+            <div class="proj-tags">
+              <span class="tag-pill">Excel</span><span class="tag-pill">FineBI</span><span class="tag-pill">星图数据</span><span class="tag-pill">漏斗分析</span><span class="tag-pill">归因分析</span>
+            </div>
+          </div>
+        </article>
+
+        <!-- Project 3: 淘宝RFM分层 -->
+        <article class="proj-card reveal">
+          <div class="proj-thumb" style="background: linear-gradient(135deg, #1f2d3d, #0f1820);">
+            <span class="proj-thumb-icon">📈</span>
+          </div>
+          <div class="proj-info">
+            <div class="proj-title-row">
+              <h3 class="proj-title">淘宝用户价值分层与精准营销</h3>
+              <a href="#" class="proj-link-icon">↗</a>
+            </div>
+            <p class="proj-desc">基于脱敏用户行为数据构建 RFM 模型，识别 8 类用户群体。发现浏览到购买转化率仅 9.47%，输出精准营销策略组合，预估提升整体 ROI 约 33.5%。</p>
+            <span class="proj-stat"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2"><path d="M12 19V6M5 12l7-7 7 7"/></svg> +33.5% ROI</span>
+            <div class="proj-tags">
+              <span class="tag-pill">Python</span><span class="tag-pill">Pandas</span><span class="tag-pill">RFM 模型</span><span class="tag-pill">Seaborn</span><span class="tag-pill">Matplotlib</span>
+            </div>
+          </div>
+        </article>
+
+        <!-- Project 4: 股市舆情分析 -->
+        <article class="proj-card reveal">
+          <div class="proj-thumb" style="background: linear-gradient(135deg, #1d3a2f, #0d201a);">
+            <span class="proj-thumb-icon">💹</span>
+          </div>
+          <div class="proj-info">
+            <div class="proj-title-row">
+              <h3 class="proj-title">股市舆情分析系统</h3>
+              <a href="#" class="proj-link-icon">↗</a>
+            </div>
+            <p class="proj-desc">股票交易系统监控看板，整合多维度市场数据与舆情信号，提供实时行情追踪与异常波动预警能力。</p>
+            <span class="proj-stat"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg> 实时监控</span>
+            <div class="proj-tags">
+              <span class="tag-pill">Python</span><span class="tag-pill">数据监控</span><span class="tag-pill">可视化看板</span>
+            </div>
+          </div>
+        </article>
+
+      </div>
+    </section>
+
+    <!-- AI CHAT ENTRY -->
+    <section id="ai-chat" class="reveal">
+      <div class="ai-banner">
+        <div class="ai-info">
+          <span class="ai-badge">智能对话入口</span>
+          <h3>AI 问答助手</h3>
+          <p>基于大语言模型的智能问答系统，随时为你解答技术问题、辅助编程、分析数据或进行创意头脑风暴。支持自然语言查询数据、自动生成图表、检索个人知识库。点击即可进入对话界面。</p>
+        </div>
+        <a href="ai-chat.html" class="ai-btn-large">
+          进入 AI 问答
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+        </a>
+      </div>
+    </section>
+
+    <!-- FOOTER -->
+    <footer class="footer reveal">
+      <p>由 <a href="#">谢浩宇</a> 设计构建 · 风格灵感来自 Brittany Chiang · © 2026</p>
+    </footer>
+
+  </main>
+</div>
+
+<!-- ===== SCROLL REVEAL SCRIPT ===== -->
+<script>
+  // IntersectionObserver for scroll-reveal animations
+  const observerOptions = {
+    root: null,
+    rootMargin: '0px 0px -60px 0px',
+    threshold: 0.1
+  };
+
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('visible');
+        // Don't unobserve — keep it visible
+      }
+    });
+  }, observerOptions);
+
+  document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+
+  // Active nav highlight on scroll
+  const sections = document.querySelectorAll('section[id]');
+  const navItems = document.querySelectorAll('.nav-item');
+
+  const navObserver = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        const id = entry.target.getAttribute('id');
+        navItems.forEach(item => {
+          item.classList.remove('active');
+          if (item.getAttribute('href') === `#${id}`) {
+            item.classList.add('active');
+          }
+        });
+      }
+    });
+  }, { rootMargin: '-30% 0px -60% 0px', threshold: 0 });
+
+  sections.forEach(section => navObserver.observe(section));
+</script>
+
+</body>
+</html>

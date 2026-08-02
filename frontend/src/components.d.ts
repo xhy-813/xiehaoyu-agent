@@ -11,12 +11,15 @@ export {}
 /* prettier-ignore */
 declare module 'vue' {
   export interface GlobalComponents {
+    AboutSection: typeof import('./components/portfolio/AboutSection.vue')['default']
     AnimatedAvatar: typeof import('./components/shared/AnimatedAvatar.vue')['default']
     ChartRenderer: typeof import('./components/result/ChartRenderer.vue')['default']
     ChatInput: typeof import('./components/chat/ChatInput.vue')['default']
     ChatMain: typeof import('./components/chat/ChatMain.vue')['default']
     ChatMessage: typeof import('./components/chat/ChatMessage.vue')['default']
     ChatSidebar: typeof import('./components/chat/ChatSidebar.vue')['default']
+    ExperienceSection: typeof import('./components/portfolio/ExperienceSection.vue')['default']
+    MouseSpotlight: typeof import('./components/portfolio/MouseSpotlight.vue')['default']
     NAvatar: typeof import('naive-ui')['NAvatar']
     NButton: typeof import('naive-ui')['NButton']
     NCard: typeof import('naive-ui')['NCard']
@@ -36,8 +39,12 @@ declare module 'vue' {
     NMessageProvider: typeof import('naive-ui')['NMessageProvider']
     NSpin: typeof import('naive-ui')['NSpin']
     NTag: typeof import('naive-ui')['NTag']
+    ProjectsSection: typeof import('./components/portfolio/ProjectsSection.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
+    SectionHeading: typeof import('./components/portfolio/SectionHeading.vue')['default']
+    SiteFooter: typeof import('./components/portfolio/SiteFooter.vue')['default']
+    SiteSidebar: typeof import('./components/portfolio/SiteSidebar.vue')['default']
     WelcomeCard: typeof import('./components/chat/WelcomeCard.vue')['default']
   }
 }

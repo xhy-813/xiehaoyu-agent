@@ -9,7 +9,9 @@ import type Plotly from 'plotly.js-dist'
 const props = defineProps<{ figureJson: string }>()
 
 const rootRef = ref<HTMLDivElement>()
-let chartInstance: Plotly.PlotlyHTMLElement | null = null
+// chartInstance 仅作"已出图"记账用（purge/resize 均作用在容器 el 上），
+// plotly.js-dist 无命名空间类型，用 unknown 即可
+let chartInstance: unknown = null
 let rafId = 0
 let resizeObserver: ResizeObserver | null = null
 

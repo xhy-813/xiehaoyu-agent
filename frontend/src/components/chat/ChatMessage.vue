@@ -71,7 +71,7 @@
         <!-- Chart -->
         <div v-if="chartJson" class="ir-section">
           <div class="ir-section-header">
-            <n-icon size="16" color="#0b7a55"><svg viewBox="0 0 24 24"><path fill="currentColor" d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"/></svg></n-icon>
+            <n-icon size="16" color="#64ffda"><svg viewBox="0 0 24 24"><path fill="currentColor" d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"/></svg></n-icon>
             <span>图表</span>
             <n-tag size="tiny" :bordered="false" type="success">{{ chartTypeLabel }}</n-tag>
           </div>
@@ -83,7 +83,7 @@
         <!-- Data table: always visible -->
         <div v-if="dataArtifact" class="ir-section">
           <div class="ir-section-header">
-            <n-icon size="16" color="#4f83e0"><svg viewBox="0 0 24 24"><path fill="currentColor" d="M4 6h16v2H4zm0 5h16v2H4zm0 5h16v2H4z"/></svg></n-icon>
+            <n-icon size="16" color="#64b5f6"><svg viewBox="0 0 24 24"><path fill="currentColor" d="M4 6h16v2H4zm0 5h16v2H4zm0 5h16v2H4z"/></svg></n-icon>
             <span>数据表</span>
             <n-tag size="tiny" :bordered="false">{{ rowsCols }}</n-tag>
           </div>
@@ -102,7 +102,7 @@
           <n-collapse-item name="trace">
             <template #header>
               <div class="ir-section-header">
-                <n-icon size="16" color="#d97706"><svg viewBox="0 0 24 24"><path fill="currentColor" d="M19 3h-4.18C14.4 1.84 13.3 1 12 1c-1.3 0-2.4.84-2.82 2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 0c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm2 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg></n-icon>
+                <n-icon size="16" color="#ffb86c"><svg viewBox="0 0 24 24"><path fill="currentColor" d="M19 3h-4.18C14.4 1.84 13.3 1 12 1c-1.3 0-2.4.84-2.82 2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 0c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm2 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg></n-icon>
                 <span>执行轨迹</span>
                 <n-tag size="tiny" :bordered="false" type="warning">{{ message.trace.length }} 步</n-tag>
               </div>
@@ -229,9 +229,12 @@ onMounted(() => {
 .msg-time { font-weight: 400; font-size: 0.75rem; color: var(--text-3); }
 .msg-bubble { position: relative; border-radius: 12px; overflow: hidden; overflow-wrap: break-word; }
 .chat-message.user .msg-bubble {
-  background: var(--bg-bubble-user);
-  border: none; padding: 0.7rem 1rem;
-  max-width: 70%; border-radius: 18px; margin-left: auto;
+  background: linear-gradient(135deg, rgba(100, 255, 218, 0.13), rgba(100, 255, 218, 0.05));
+  border: 1px solid rgba(100, 255, 218, 0.1);
+  padding: 0.7rem 1rem;
+  max-width: 70%;
+  border-radius: 18px;
+  margin-left: auto;
 }
 .msg-content {
   font-size: 0.875rem; line-height: 1.7; color: var(--text-1); word-break: break-word;
@@ -252,7 +255,7 @@ onMounted(() => {
 .loading-row { display: flex; align-items: center; gap: 0.5rem; }
 .live-trace { margin-top: 0.6rem; }
 .irt-connector.flow {
-  background: linear-gradient(180deg, var(--accent-strong) 0%, rgba(0,0,0,0.1) 50%, var(--accent-strong) 100%);
+  background: linear-gradient(180deg, var(--accent-strong) 0%, rgba(136,146,176,0.25) 50%, var(--accent-strong) 100%);
   background-size: 100% 250%;
   animation: flowDown 1.2s linear infinite;
 }
@@ -272,18 +275,18 @@ onMounted(() => {
   background: transparent; color: var(--text-3);
   cursor: pointer; transition: background 0.2s, color 0.2s;
 }
-.action-btn:hover { background: rgba(0,0,0,0.05); color: var(--text-1); }
+.action-btn:hover { background: rgba(255, 255, 255, 0.06); color: var(--text-1); }
 
 /* Inline result */
 .inline-result {
   margin-top: 0.6rem;
   border: 1px solid var(--border);
-  background: #fff;
+  background: var(--bg-card);
   border-radius: 10px;
   overflow: hidden;
 }
 .ir-section {
-  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+  border-bottom: 1px solid var(--border);
 }
 .ir-section:last-child {
   border-bottom: none;
@@ -302,7 +305,7 @@ onMounted(() => {
 .irt-step { display: flex; gap: 0.5rem; }
 .irt-line { display: flex; flex-direction: column; align-items: center; width: 12px; flex-shrink: 0; }
 .irt-dot { width: 8px; height: 8px; border-radius: 50%; margin-top: 5px; }
-.irt-connector { width: 1px; flex: 1; background: rgba(0, 0, 0, 0.1); margin: 3px 0; }
+.irt-connector { width: 1px; flex: 1; background: var(--border); margin: 3px 0; }
 .irt-body { flex: 1; padding: 0.2rem 0 0.7rem; }
 .irt-header { display: flex; align-items: center; gap: 0.4rem; margin-bottom: 0.2rem; }
 .irt-num { font-size: 0.68rem; color: var(--text-3); }

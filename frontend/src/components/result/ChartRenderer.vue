@@ -43,12 +43,19 @@ async function render() {
   }
   try {
     const fig = JSON.parse(props.figureJson)
-    const layout = {
-      paper_bgcolor: 'rgba(0,0,0,0)',
-      plot_bgcolor: 'rgba(0,0,0,0)',
-      font: { color: '#5c6370', size: 11 },
-      margin: { t: 40, r: 20, b: 50, l: 50 },
-      ...fig.layout,
+    const layout = { ...(fig.layout || {}) }
+    layout.paper_bgcolor = 'rgba(0,0,0,0)'
+    layout.plot_bgcolor = 'rgba(0,0,0,0)'
+    layout.font = { ...(layout.font || {}), color: '#8892b0', size: 11 }
+    layout.margin = { t: 40, r: 20, b: 50, l: 50, ...(layout.margin || {}) }
+    for (const key of Object.keys(layout)) {
+      if (/^[xy]axis/.test(key)) {
+        layout[key] = {
+          gridcolor: 'rgba(136,146,176,0.15)',
+          zerolinecolor: 'rgba(136,146,176,0.25)',
+          ...layout[key],
+        }
+      }
     }
     Plotly.newPlot(el, fig.data, layout, {
       responsive: true,

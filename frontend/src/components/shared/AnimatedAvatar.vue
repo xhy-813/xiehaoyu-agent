@@ -119,7 +119,7 @@ onBeforeUnmount(() => {
   border-radius: 50%;
   overflow: hidden;
   flex-shrink: 0;
-  background: rgba(99, 226, 183, 0.06);
+  background: rgba(100, 255, 218, 0.06);
 }
 .lottie-container {
   width: 100%;

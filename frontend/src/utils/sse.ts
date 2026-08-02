@@ -157,8 +157,6 @@ export async function sseChatStream(
     lastError = errorMsg
     // Only retry on network errors, not on application errors
     if (errorMsg === '服务器返回了空的响应体') continue
-    // Don't retry on auth errors or bad requests
-    if (errorMsg.includes('未授权') || errorMsg.includes('Token')) break
   }
 
   callbacks.onError?.(lastError || '请求失败，已重试多次')

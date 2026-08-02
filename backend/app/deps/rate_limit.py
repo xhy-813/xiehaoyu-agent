@@ -49,10 +49,6 @@ def check_rate_limit(client_ip: str = "unknown") -> None:
         )
     bucket.append(now)
 
-    # Prune empty buckets to prevent unbounded dict growth
-    if not bucket:
-        del _hourly_buckets[client_ip]
-
 
 def check_global_daily_cap() -> None:
     """Raise 429 if the site-wide daily quota is exhausted (anti-abuse backstop)."""

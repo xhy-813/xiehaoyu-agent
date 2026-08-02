@@ -5,7 +5,7 @@
 - **介绍本人**：RAG 检索个人知识库，以第一人称回答面试官/HR 关于"我是谁、做过什么"的问题
 - **ChatBI**：自然语言查 Olist 巴西电商数据（Text2SQL → 自动可视化 → 结果解读）
 
-> 公网部署地址 + 访问码见简历右上角 | GitHub 公开仓
+> 公网部署地址见简历右上角 | Gitee 公开仓
 
 ## 技术栈
 
@@ -13,7 +13,7 @@
 | -------------------- | ------------------------------------------------- | --------------------------------------- |
 | **LLM**        | DeepSeek Chat API (`deepseek-v4-flash`)         | 中文效果好、有免费额度                  |
 | **Agent 编排** | LangGraph 1.2.9+                                  | 状态机式，支持`astream()` 流式推送    |
-| **后端**       | FastAPI + Uvicorn                                 | 原生 async，SSE 流式推送，JWT 鉴权      |
+| **后端**       | FastAPI + Uvicorn                                 | 原生 async，SSE 流式推送，按 IP 限流    |
 | **前端**       | Vue 3 + TypeScript + Vite + Naive UI              | 暗色主题，SSE 实时接收，Plotly 图表渲染 |
 | **RAG 向量库** | ChromaDB（本地持久化）                            | 零成本，cosine 距离                     |
 | **Embedding**  | BAAI/bge-large-zh-v1.5                            | 通过 sentence-transformers 本地运行     |
@@ -22,7 +22,7 @@
 | **可视化**     | Plotly（Python 生成 JSON → 前端 plotly.js 渲染） | 交互式，暗色主题适配                    |
 | **动画**       | Lottie（lottie-web）                              | 6 种角色动画状态                        |
 | **部署**       | 腾讯云轻量服务器 (2C4G)                           | Nginx 反向代理 + systemd 守护           |
-| **鉴权/限流**  | 访问码 → JWT + 内存限流                          | 每小时配额，防刷 API                    |
+| **限流**       | 公开访问 + 按 IP 小时限流 + 全局每日上限           | 防刷 API                        |
 
 ## 架构
 
@@ -31,7 +31,7 @@
     │
     │ POST /api/chat (SSE 流式)
     ▼
-FastAPI 后端 (JWT 鉴权 + 限流)
+FastAPI 后端 (公开访问，按 IP 限流)
     │
     ▼
 LangGraph Agent 状态机
@@ -93,18 +93,17 @@ xiehaoyu-agent/
 │       ├── visualize.py            # 自动可视化（5 种图表类型）
 │       └── explain_result.py       # LLM 结果解读
 ├── backend/                        # FastAPI 后端
-│   ├── requirements.txt            # fastapi, uvicorn, PyJWT
+│   ├── requirements.txt            # fastapi, uvicorn
 │   └── app/
 │       ├── __init__.py
 │       ├── main.py                 # FastAPI 入口（CORS, 路由注册）
-│       ├── dependencies.py         # JWT Bearer 验证（Depends）
+│       ├── dependencies.py         # 公开访问（Depends 注入限流）
 │       ├── deps/
 │       │   ├── __init__.py
 │       │   └── rate_limit.py       # 内存限流（每小时配额）
 │       ├── routers/
 │       │   ├── __init__.py
-│       │   ├── auth.py             # POST /api/auth/login（访问码 → JWT）
-│       │   └── chat.py             # POST /api/chat（SSE 流式推送）
+│       │   ├── chat.py             # POST /api/chat（SSE 流式推送）
 │       └── schemas/
 │           ├── __init__.py
 │           ├── auth.py             # LoginRequest, TokenResponse
@@ -120,12 +119,11 @@ xiehaoyu-agent/
 │       ├── main.ts                 # Vue 入口（Pinia + Router）
 │       ├── App.vue                 # 根组件（暗色主题 + Naive UI 配置）
 │       ├── router/
-│       │   └── index.ts            # /login, /chat 路由守卫
+│       │   └── index.ts            # /, /chat 路由
 │       ├── stores/
-│       │   ├── auth.ts             # JWT 认证状态（sessionStorage）
 │       │   └── chat.ts             # 聊天状态 + SSE 流式 + Lottie 动画状态管理
 │       ├── api/
-│       │   └── client.ts           # API 客户端（login + SSE chat）
+│       │   └── client.ts           # API 客户端（SSE chat）
 │       ├── utils/
 │       │   ├── sse.ts              # SSE 客户端（fetch + ReadableStream 解析）
 │       │   ├── markdown.ts         # Markdown 渲染（markdown-it + highlight.js）
@@ -135,24 +133,22 @@ xiehaoyu-agent/
 │       ├── styles/
 │       │   └── global.css          # 全局样式（暗色主题、滚动条、动画）
 │       ├── views/
-│       │   ├── LoginView.vue       # 登录页（渐变背景 + Lottie 动画角色）
-│       │   └── ChatView.vue        # 主聊天布局（响应式：桌面侧边栏 + 移动端浮层）
+│       │   ├── PortfolioView.vue   # 作品集主页（左栏导航 + 关于/经历/项目/聊天入口）
+│       │   └── ChatView.vue        # 聊天布局（响应式：顶栏 + 聊天区 + 全屏模式）
 │       └── components/
-│           ├── shared/
-│           │   └── AnimatedAvatar.vue  # Lottie 动画角色组件（6 种状态）
-│           ├── chat/
-│           │   ├── ChatSidebar.vue     # 侧边栏（状态面板 + 清空对话 + 退出登录）
-│           │   ├── ChatMain.vue        # 聊天主区域（消息列表 + 输入框）
-│           │   ├── ChatMessage.vue     # 消息气泡（Markdown 渲染 + 内联结果展示）
-│           │   ├── ChatInput.vue       # 输入框（Enter 发送，Shift+Enter 换行）
-│           │   └── WelcomeCard.vue     # 欢迎卡片（3 组快捷提问入口）
-│           └── result/
-│               ├── ResultPanel.vue     # 结果面板容器（Tab 切换）
-│               ├── ResultSummary.vue   # 结果摘要（数据维度 + 图表类型 + 步骤数）
-│               ├── ResultData.vue      # 数据表格（Naive UI DataTable + SQL 折叠）
-│               ├── ResultChart.vue     # 图表渲染（Plotly.js）
-│               ├── ResultTrace.vue     # 执行轨迹时间线
-│               └── ChartRenderer.vue   # Plotly 图表渲染器（ResizeObserver 自适应）
+│           ├── portfolio/              # 作品集组件
+│           │   ├── SiteSidebar.vue     # 左栏导航（锚点滚动 + 高亮跟随）
+│           │   ├── AboutSection.vue    # 关于我
+│           │   ├── ExperienceSection.vue # 经历
+│           │   ├── ProjectsSection.vue # 项目
+│           │   ├── ChatSection.vue     # AI 问答 Banner（直达 /chat）
+│           │   ├── SiteFooter.vue      # 页脚
+│           │   ├── SectionHeading.vue  # 区块标题
+│           │   └── MouseSpotlight.vue  # 鼠标光斑
+│           └── chat/
+│               ├── ChatWidget.vue      # 聊天组件（消息列表 + 输入框）
+│               ├── ChatMessage.vue     # 消息气泡（Markdown 渲染 + 内联结果展示）
+│               └── ChatInput.vue       # 输入框（Enter 发送，Shift+Enter 换行）
 ├── chatbi/                         # Text2SQL 模块
 │   ├── __init__.py
 │   ├── schema.py                   # 9 张 Olist 表完整 schema 描述
@@ -186,7 +182,6 @@ xiehaoyu-agent/
 │   ├── smoke_introduce_me.py       # RAG 工具测试
 │   ├── smoke_text2sql.py           # Text2SQL 工具测试
 │   ├── smoke_viz_explain.py        # 可视化 + 解读工具测试
-│   ├── test_auth.py                # 登录 API 单元测试
 │   ├── test_rate_limit.py          # 限流单元测试
 │   ├── test_text2sql.py            # Text2SQL 准确率评测（50 题，待完成）
 │   ├── test_rag.py                 # RAG 检索质量测试
@@ -285,21 +280,8 @@ xiehaoyu-agent/
 
 ### 页面结构
 
-- **登录页** (`/login`)：动态渐变背景 + Lottie 动画角色 + 访问码输入 + 渐变品牌标题
-- **聊天页** (`/chat`)：左侧边栏 + 中间聊天区 + 路由守卫（未登录跳转登录页）
-
-### 角色动画系统（Lottie）
-
-基于 `lottie-web` 实现的 6 种动画状态：
-
-| 状态           | 触发条件                 | 动画类型                     |
-| -------------- | ------------------------ | ---------------------------- |
-| `welcome`    | 登录页/欢迎卡片加载      | 一次性播放，结束后切`idle` |
-| `idle`       | 待机状态                 | 循环播放                     |
-| `thinking`   | SSE 流式进行中           | 循环播放                     |
-| `answering`  | 流式结束（无数据/图表）  | 一次性播放 2.5s              |
-| `presenting` | 流式结束（有数据或图表） | 一次性播放 3.5s              |
-| `error`      | 流式出错                 | 一次性播放 3s                |
+- **作品集页** (`/`)：暗色主题个人作品集（左栏导航 + 关于/经历/项目/聊天入口）
+- **聊天页** (`/chat`)：顶栏 + 聊天区 + 公开访问
 
 ### 聊天功能
 
@@ -313,34 +295,17 @@ xiehaoyu-agent/
 
 ### 响应式布局
 
-- 桌面端（≥768px）：侧边栏常驻 + 聊天区
-- 移动端（<768px）：侧边栏浮层 + 汉堡菜单
+- 桌面端（>980px）：左栏固定 + 右栏内容
+- 移动端（≤980px）：顶部身份块 + 横向导航 + 纵向内容
 
 ### 主题
 
-- Naive UI 暗色主题（`darkTheme`）
+- 暗色主题（CSS 变量驱动）
 - 主色调：`#63e2b7`（青绿色）
-- 自定义主题覆盖：Layout、Card、Input、Button
 
 ## API 文档
 
-### `POST /api/auth/login`
-
-请求体：
-
-```json
-{ "access_code": "your-access-code" }
-```
-
-响应：
-
-```json
-{ "access_token": "eyJ...", "token_type": "bearer" }
-```
-
 ### `POST /api/chat`
-
-Headers: `Authorization: Bearer <token>`
 
 请求体：
 
@@ -382,7 +347,7 @@ source .venv/bin/activate            # Linux/Mac
 pip install -r requirements.txt
 
 # 3. 配置环境变量
-cp .env.example .env                 # 填入 DEEPSEEK_API_KEY / ACCESS_CODE
+cp .env.example .env                 # 填入 DEEPSEEK_API_KEY
 
 # 4. 启动
 streamlit run app.py
@@ -394,7 +359,7 @@ streamlit run app.py
 # 后端
 pip install -r requirements.txt
 pip install -r backend/requirements.txt
-cp .env.example .env                 # 填入 DEEPSEEK_API_KEY / ACCESS_CODE / JWT_SECRET
+cp .env.example .env                 # 填入 DEEPSEEK_API_KEY
 uvicorn backend.app.main:app --reload
 
 # 前端
@@ -430,11 +395,9 @@ sudo ./deploy.sh                     # 或 sudo ./deploy.sh your-domain.com（�
 | `DEEPSEEK_API_KEY`     | (必填)                       | DeepSeek API 密钥                                  |
 | `DEEPSEEK_BASE_URL`    | `https://api.deepseek.com` | API 地址                                           |
 | `DEEPSEEK_MODEL`       | `deepseek-v4-flash`        | 模型名称                                           |
-| `ACCESS_CODE`          | (必填)                       | 用户登录访问码                                     |
-| `JWT_SECRET`           | (必填)                       | JWT 签名密钥（建议`secrets.token_hex(32)` 生成） |
-| `JWT_EXPIRE_HOURS`     | `24`                       | JWT 过期时间                                       |
+| `IP_HOURLY_QUOTA`     | `20`                      | 每 IP 每小时提问次数上限                           |
+| `GLOBAL_DAILY_QUOTA`  | `200`                     | 全站每日提问总次数上限                             |
 | `CORS_ORIGINS`         | `http://localhost:5173`    | 允许的前端地址（逗号分隔）                         |
-| `SESSION_HOURLY_QUOTA` | `50`                       | 每小时提问次数上限                                 |
 | `MAX_AGENT_STEPS`      | `5`                        | Agent 最大推理步数                                 |
 | `SQL_RETRY_MAX`        | `3`                        | SQL 失败最大重试次数                               |
 | `PLANNER_TEMPERATURE`  | `0.0`                      | Planner 温度（0=确定性）                           |
@@ -448,8 +411,8 @@ sudo ./deploy.sh                     # 或 sudo ./deploy.sh your-domain.com（�
 - **类**：`PascalCase`
 - **Prompt 文件**：`.md` 放 `prompts/`，代码中用 `pathlib` 读取
 - **环境变量**：全大写 `SNAKE_CASE`
-- **前端组件**：`PascalCase.vue`，按功能分 `chat/`、`result/`、`shared/`
-- **前端状态**：Pinia stores（`auth.ts`、`chat.ts`）
+- **前端组件**：`PascalCase.vue`，按功能分 `portfolio/`、`chat/`
+- **前端状态**：Pinia stores（`chat.ts`）
 - **类型安全**：TypeScript strict mode + Pydantic schemas
 
 ## 测试
@@ -462,7 +425,6 @@ python -m tests.smoke_text2sql       # Text2SQL 工具
 python -m tests.smoke_viz_explain    # 可视化 + 解读工具
 
 # 单元测试
-pytest tests/test_auth.py -v         # 登录 API
 pytest tests/test_rate_limit.py -v   # 限流
 pytest tests/test_validator.py -v    # SQL 校验器
 pytest tests/test_visualize.py -v    # 可视化选图
@@ -507,8 +469,8 @@ pytest tests/ -v
 - 设计并实现多 Tool Agent 编排架构（介绍本人 / Text2SQL 查数 / 自动可视化 / 结果解读），基于 LangGraph 状态机驱动 LLM 自主规划调用链，最多 5 轮循环推理
 - Text2SQL 引擎：完整 schema + few-shot prompt + sqlparse 语法校验 + 执行失败反馈自动重写（最多 3 轮），Olist 电商数据集（9 表关联，99441 行订单）
 - 构建 RAG 个人知识检索模块（BGE-large-zh-v1.5 嵌入 + ChromaDB），支持简历/项目文档热更新，回答附带来源引用
-- 前后端分离架构：FastAPI SSE 流式推送 + Vue 3 暗色主题 SPA + JWT 鉴权 + 6 种 Lottie 角色动画
-- 全链路公网部署（腾讯云轻量服务器），带访问码鉴权 + session 级 QPS 限流
+- 前后端分离架构：FastAPI SSE 流式推送 + Vue 3 暗色主题 SPA + 按 IP 限流 + 6 种 Lottie 角色动画
+- 全链路公网部署（腾讯云轻量服务器），公开访问 + 按 IP 限流 + 全局日上限
 
 ## 踩坑记录
 

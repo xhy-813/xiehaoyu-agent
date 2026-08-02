@@ -9,11 +9,14 @@ from __future__ import annotations
 import json
 import logging
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Request
 from fastapi.responses import StreamingResponse
 
-from backend.app.dependencies import get_current_user
-from backend.app.deps.rate_limit import check_rate_limit
+from backend.app.deps.rate_limit import (
+    check_global_daily_cap,
+    check_rate_limit,
+    get_client_ip,
+)
 from backend.app.schemas.chat import ChatRequest
 
 from agent.graph import stream_run
@@ -51,18 +54,17 @@ async def _event_generator(question: str, request: Request) -> str:
 
 
 @router.post("")
-async def chat(
-    body: ChatRequest,
-    request: Request,
-    _user: dict = Depends(get_current_user),
-) -> StreamingResponse:
+async def chat(body: ChatRequest, request: Request) -> StreamingResponse:
     """Send a question and receive agent execution steps as SSE events.
 
-    Requires a valid JWT in the ``Authorization`` header.  Each SSE event
-    is a JSON object with ``type``, ``node``, and ``data`` fields.
-    The stream ends with ``data: [DONE]``.
+    Public endpoint (no auth).  Rate-limited per client IP (hourly) with a
+    site-wide daily cap as an anti-abuse backstop.  Each SSE event is a JSON
+    object with ``type``, ``node``, and ``data`` fields.  The stream ends
+    with ``data: [DONE]``.
     """
-    check_rate_limit(user_id=_user.get("sub", "default"))
+    client_ip = get_client_ip(request)
+    check_rate_limit(client_ip)       # 先查 IP：被拒请求不消耗全局名额
+    check_global_daily_cap()
 
     return StreamingResponse(
         _event_generator(body.question, request),

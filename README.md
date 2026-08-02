@@ -97,16 +97,14 @@ xiehaoyu-agent/
 │   └── app/
 │       ├── __init__.py
 │       ├── main.py                 # FastAPI 入口（CORS, 路由注册）
-│       ├── dependencies.py         # 公开访问（Depends 注入限流）
 │       ├── deps/
 │       │   ├── __init__.py
-│       │   └── rate_limit.py       # 内存限流（每小时配额）
+│       │   └── rate_limit.py       # 内存限流（按 IP 每小时 + 全局每日上限）
 │       ├── routers/
 │       │   ├── __init__.py
-│       │   ├── chat.py             # POST /api/chat（SSE 流式推送）
+│       │   └── chat.py             # POST /api/chat（SSE 流式推送）
 │       └── schemas/
 │           ├── __init__.py
-│           ├── auth.py             # LoginRequest, TokenResponse
 │           └── chat.py             # ChatRequest
 ├── frontend/                       # Vue 3 + TypeScript 前端
 │   ├── package.json

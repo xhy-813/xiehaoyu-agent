@@ -36,14 +36,14 @@ cd "$APP_DIR"
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -q -r requirements.txt
-pip install -q fastapi uvicorn pyjwt
+pip install -q fastapi uvicorn
 
 # --- 4. Environment config ---
 echo "[4/6] 配置环境变量..."
 if [ ! -f "$APP_DIR/.env" ]; then
     cp "$APP_DIR/.env.example" "$APP_DIR/.env"
     echo "  >>> 请编辑 $APP_DIR/.env 填入真实密钥后重新运行此脚本"
-    echo "  >>> 需要配置: DEEPSEEK_API_KEY, ACCESS_CODE, JWT_SECRET"
+    echo "  >>> 需要配置: DEEPSEEK_API_KEY"
     exit 1
 fi
 echo "  .env 已存在，跳过"

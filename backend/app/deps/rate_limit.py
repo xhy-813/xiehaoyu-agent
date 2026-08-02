@@ -36,6 +36,10 @@ def check_rate_limit(client_ip: str = "unknown") -> None:
     cutoff = now - 3600
     bucket = _hourly_buckets[client_ip]
     bucket[:] = [t for t in bucket if t > cutoff]
+    if not bucket:
+        # 全部过期：先删除再经 defaultdict 重建，避免字典随唯一 IP 数无界增长
+        del _hourly_buckets[client_ip]
+        bucket = _hourly_buckets[client_ip]
 
     # Prune expired entries before checking (M11: prune before append, not after)
     if len(bucket) >= settings.ip_hourly_quota:

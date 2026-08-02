@@ -1,13 +1,10 @@
-"""Streamlit entry point: auth gate + chat + trace panels."""
+"""Streamlit entry point: chat + trace panels."""
 
 from __future__ import annotations
-
-import time
 
 import streamlit as st
 
 from configs.settings import settings
-from ui.auth import check_access
 from ui.chat import render_chat
 from ui.trace import render_chart, render_data, render_summary, render_trace
 
@@ -192,15 +189,8 @@ def _render_sidebar() -> None:
         st.markdown("### Xiehaoyu-Agent")
         st.caption("Personal Agent + ChatBI")
 
-        now = time.time()
-        timestamps = st.session_state.get("query_timestamps", [])
-        cutoff = now - 3600
-        used = len([t for t in timestamps if t > cutoff])
-        remaining = max(0, settings.session_hourly_quota - used)
-
         with st.container(border=True):
             st.markdown("**Session Status**")
-            st.metric("剩余配额", f"{remaining}/{settings.session_hourly_quota}", "次/小时")
             st.caption(f"Agent 步数上限: {settings.max_agent_steps}")
             st.caption(f"SQL 重试上限: {settings.sql_retry_max}")
 
@@ -223,9 +213,6 @@ def main() -> None:
     )
 
     st.markdown(_CUSTOM_CSS, unsafe_allow_html=True)
-
-    if not check_access():
-        return
 
     _render_sidebar()
 

@@ -169,7 +169,7 @@ xiehaoyu-agent/
 │   └── explain.md                  # 数据解读模板（洞察要求 + 业务背景 + 正反面示例）
 ├── configs/
 │   ├── __init__.py
-│   └── settings.py                 # 全局配置（API key, JWT, 限流, 温度参数, 启动校验）
+│   └── settings.py                 # 全局配置（API key, 限流, 温度参数, 启动校验）
 ├── deploy/                         # 部署配置
 │   ├── deploy.sh                   # 一键部署脚本（Ubuntu 20.04+）
 │   ├── nginx.conf                  # Nginx 配置（SPA + API 代理 + SSE 禁用缓冲）

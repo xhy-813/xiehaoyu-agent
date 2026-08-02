@@ -26,8 +26,8 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           pip install pytest pytest-cov
-          # FastAPI + JWT for backend tests
-          pip install fastapi uvicorn pyjwt httpx
+          # FastAPI for backend tests
+          pip install fastapi uvicorn httpx
 
       - name: Run tests with coverage
         env:
@@ -35,8 +35,6 @@ jobs:
           HF_HUB_OFFLINE: "1"
           TRANSFORMERS_OFFLINE: "1"
           DEEPSEEK_API_KEY: "sk-test-placeholder"
-          ACCESS_CODE: "test-code"
-          JWT_SECRET: "test-secret-for-ci-only"
         run: |
           pytest tests/ \
             -v \

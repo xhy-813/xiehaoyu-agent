@@ -1,35 +1,44 @@
 /* ============================================================
-   Xiehaoyu-Agent — Global Styles (Light)
+   Xiehaoyu-Agent — Global Styles (Dark Geek)
    ============================================================ */
 
 :root {
   /* 背景 */
-  --bg-base: #ffffff;
-  --bg-sider: #f9f9f9;
-  --bg-bubble-user: #eafaf3;
-  --bg-subtle: rgba(0, 0, 0, 0.03);        /* 卡片头/表头浅底 */
+  --bg-base: #0a192f;
+  --bg-card: #112240;
+  --bg-card-lighter: #1d3461;
+  --bg-bubble-user: #112240;
+  --bg-subtle: rgba(100, 255, 218, 0.04);        /* 卡片头/表头浅底 */
   /* 品牌 */
-  --accent: #63e2b7;                        /* 仅小面积点缀：selection、头像光晕 */
-  --accent-strong: #0b7a55;                 /* 工作色：链接/强调/焦点/流光（白底 4.6:1） */
-  --accent-strong-hover: #0d9463;
-  --ink: #1f2328;                           /* 主按钮（近黑，ChatGPT 风） */
-  --ink-hover: #3a4048;
+  --accent: #64ffda;
+  --accent-strong: #64ffda;                       /* 工作色：链接/强调/焦点/流光 */
+  --accent-strong-hover: #7dffe3;
+  --accent-border: rgba(100, 255, 218, 0.2);
+  --ink: #64ffda;                                 /* 主按钮色 */
+  --ink-hover: #7dffe3;
   /* 文本 */
-  --text-1: #1f2328;                        /* 15.8:1 主文本 */
-  --text-2: #5c6370;                        /* 7.0:1  次要文本 */
-  --text-3: #6b7280;                        /* 4.7:1  辅助/时间戳（过 AA） */
+  --text-bright: #e6f1ff;                         /* 亮白（姓名/章节标题/导航当前横线） */
+  --text-1: #ccd6f6;                              /* 主文本 */
+  --text-2: #8892b0;                              /* 次要文本 */
+  --text-3: #7a8cb0;                              /* 辅助/时间戳 */
   /* 结构 */
-  --border: rgba(0, 0, 0, 0.08);
-  --border-strong: rgba(0, 0, 0, 0.12);
-  --shadow-pop: 0 2px 12px rgba(0, 0, 0, 0.06);
-  --shadow-card: 0 8px 32px rgba(0, 0, 0, 0.08);
+  --border: #233554;
+  --border-strong: rgba(100, 255, 218, 0.35);
+  --shadow-pop: 0 10px 30px -15px rgba(2, 12, 27, 0.7);
+  --shadow-card: 0 10px 30px -15px rgba(2, 12, 27, 0.7);
   --radius-card: 10px;
   --radius-pill: 999px;
-  /* 工具轨迹色（浅底可读版，与 tool-constants.ts 同步） */
-  --tool-query: #4f83e0;
-  --tool-viz: #0b7a55;
-  --tool-rag: #d97706;
-  --tool-explain: #9333ea;
+  /* 工具轨迹色（深色可读版，与 tool-constants.ts 同步） */
+  --tool-query: #64b5f6;
+  --tool-viz: #64ffda;
+  --tool-rag: #ffb86c;
+  --tool-explain: #c792ea;
+  /* 等宽字体（编号/装饰） */
+  --font-mono: 'Fira Code', 'SF Mono', 'Cascadia Code', Consolas, monospace;
+}
+
+html {
+  scroll-behavior: smooth;
 }
 
 html, body, #app {
@@ -38,7 +47,7 @@ html, body, #app {
   height: 100%;
   background: var(--bg-base);
   color: var(--text-1);
-  font-family: 'Segoe UI', -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', Inter, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -47,13 +56,13 @@ html, body, #app {
 
 ::-webkit-scrollbar { width: 5px; height: 5px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: rgba(0, 0, 0, 0.15); border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: rgba(0, 0, 0, 0.25); }
+::-webkit-scrollbar-thumb { background: rgba(136, 146, 176, 0.35); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(136, 146, 176, 0.55); }
 
 /* ── Selection ─────────────────────────────── */
 
 ::selection {
-  background: rgba(99, 226, 183, 0.35);
+  background: rgba(100, 255, 218, 0.25);
   color: var(--text-1);
 }
 
@@ -72,12 +81,13 @@ pre code.hljs {
   padding: 1rem 1.1rem;
   font-size: 0.84rem;
   line-height: 1.55;
-  font-family: ui-monospace, 'Cascadia Code', 'JetBrains Mono', Consolas, monospace;
+  font-family: var(--font-mono);
 }
 
 /* Inline code */
 :not(pre) > code {
-  background: rgba(0, 0, 0, 0.05);
+  background: rgba(100, 255, 218, 0.08);
+  color: var(--accent-strong);
   padding: 0.12em 0.4em;
   border-radius: 4px;
   font-size: 0.88em;
@@ -86,6 +96,26 @@ pre code.hljs {
 /* ── Tabular numbers ─────────────────────────── */
 
 .n-data-table, .status-text { font-variant-numeric: tabular-nums; }
+
+/* ── Scroll reveal ─────────────────────────────── */
+
+.reveal {
+  opacity: 0;
+  transform: translateY(28px);
+  transition: opacity 0.7s cubic-bezier(0.16, 1, 0.3, 1),
+              transform 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.reveal.revealed {
+  opacity: 1;
+  transform: none;
+}
+/* stagger：容器内 .reveal 子项按 0.08s 阶梯延迟入场 */
+.stagger > .reveal:nth-child(1) { transition-delay: 0s; }
+.stagger > .reveal:nth-child(2) { transition-delay: 0.08s; }
+.stagger > .reveal:nth-child(3) { transition-delay: 0.16s; }
+.stagger > .reveal:nth-child(4) { transition-delay: 0.24s; }
+.stagger > .reveal:nth-child(5) { transition-delay: 0.32s; }
+.stagger > .reveal:nth-child(6) { transition-delay: 0.4s; }
 
 /* ── Animations ────────────────────────────────────────── */
 
@@ -118,6 +148,15 @@ pre code.hljs {
   0%, 100% { opacity: 1; }
   50% { opacity: 0; }
 }
+@keyframes pulse-glow {
+  0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(100, 255, 218, 0.4); }
+  50% { opacity: 0.6; box-shadow: 0 0 0 5px rgba(100, 255, 218, 0); }
+}
+@keyframes float-blob {
+  0%, 100% { transform: translate(0, 0); }
+  33% { transform: translate(15px, -20px); }
+  66% { transform: translate(-10px, 15px); }
+}
 
 .chat-message-enter {
   animation: fadeInUp 0.35s ease-out;
@@ -139,22 +178,18 @@ pre code.hljs {
 
 /* ── Naive UI Overrides ────────────────────────────────── */
 
-/* Softer card borders */
 .n-card {
   --n-border-color: var(--border) !important;
 }
 
-/* Smooth tab transitions */
 .n-tabs .n-tabs-tab {
   transition: color 0.2s, background 0.2s;
 }
 
-/* Better button hover */
 .n-button {
   transition: all 0.2s ease;
 }
 
-/* Code component */
 .n-code {
   border-radius: 8px;
 }
@@ -162,11 +197,35 @@ pre code.hljs {
 /* ── Reduced motion ─────────────────────────── */
 
 @media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  .reveal { opacity: 1; transform: none; transition: none; }
   *, *::before, *::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
+}
+
+/* ── Pill tags（描边薄荷胶囊，按参考实现稿） ─────────────── */
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--accent-strong);
+  background: rgba(100, 255, 218, 0.08);
+  border: 1px solid rgba(100, 255, 218, 0.18);
+  border-radius: 20px;
+  padding: 4px 14px;
+  line-height: 1.4;
+  white-space: nowrap;
+  transition: background 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+}
+.pill:hover {
+  background: rgba(100, 255, 218, 0.15);
+  border-color: rgba(100, 255, 218, 0.35);
+  transform: translateY(-1px);
 }
 
 /* ── Utility ───────────────────────────────────────────── */

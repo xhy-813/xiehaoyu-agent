@@ -2,7 +2,7 @@
  * ChatMessage component reuses the same parser (including highlight.js). */
 import MarkdownIt from 'markdown-it'
 import hljs from 'highlight.js'
-import 'highlight.js/styles/github.css'
+import 'highlight.js/styles/github-dark.css'
 
 const md = new MarkdownIt({
   html: false,

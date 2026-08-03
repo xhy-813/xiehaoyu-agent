@@ -333,27 +333,7 @@ data: [DONE]
 
 ## 快速开始
 
-### 方式一：Streamlit 快速体验
-
-```bash
-# 1. 创建虚拟环境
-python -m venv .venv
-source .venv/bin/activate            # Linux/Mac
-# .venv\Scripts\activate             # Windows
-
-# 2. 安装依赖
-pip install -r requirements.txt
-
-# 3. 配置环境变量
-cp .env.example .env                 # 填入 DEEPSEEK_API_KEY
-
-# 4. 启动
-streamlit run app.py
-```
-
-### 方式二：Vue 3 + FastAPI 生产模式
-
-```bash
+### 方式一### 方式一：Vue 3 + FastAPI（推荐）ash
 # 后端
 pip install -r requirements.txt
 pip install -r backend/requirements.txt

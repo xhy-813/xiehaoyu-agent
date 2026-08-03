@@ -17,7 +17,7 @@
 |---|---|---|
 | LLM | DeepSeek Chat API (`deepseek-v4-flash`) | 中文效果好、便宜、有免费额度；可切千问 |
 | Agent 编排 | LangGraph 1.2.9+ | 状态机式，简历含金量高；支持 `astream()` 流式 |
-| 后端 | FastAPI + Uvicorn | 原生 async，SSE 流式推送，JWT 鉴权 |
+| 后端 | FastAPI + Uvicorn | 原生 async，SSE 流式推送，按 IP 限流 |
 | 前端 | Vue 3 + TypeScript + Vite + Naive UI | 暗色主题，SSE 实时接收，Plotly 图表渲染 |
 | RAG 向量库 | ChromaDB（本地持久化） | 零成本，cosine 距离 |
 | Embedding | BAAI/bge-large-zh-v1.5 | 通过 sentence-transformers 本地运行 |
@@ -25,7 +25,7 @@
 | 可视化 | Plotly（Python 生成 JSON → 前端 plotly.js 渲染） | 交互式，零丢失 |
 | 前端动画 | Lottie（lottie-web） | 6 种角色动画状态，轻量 |
 | 部署 | 腾讯云轻量服务器 (2C4G) | Nginx 反向代理 + systemd 守护 |
-| 鉴权/限流 | 访问码 → JWT + 内存限流 | 防刷 API |
+| 鉴权/限流 | 公开访问 + 按 IP 每小时限流 + 全局每日上限 | 防刷 API |
 
 ## 架构
 
@@ -116,9 +116,10 @@ START → planner → tool_router → introduce_me/query_data/visualize/explain_
 
 ### Day 7~8：Vue 3 + FastAPI 重构 ✅
 
-- [x] 后端 API 层：FastAPI + SSE 流式推送 + JWT 鉴权 + 限流
+- [x] 后端 API 层：FastAPI + SSE 流式推送 + 按 IP 限流
+
 - [x] `agent/graph.py` 新增 `stream_run()` 异步生成器 + `_serialize_artifact()` 序列化
-- [x] `configs/settings.py` 新增 JWT/CORS/温度参数配置项 + 启动安全校验
+- [x] `configs/settings.py` 新增 CORS/温度参数/限流配置项 + 启动安全校验
 - [x] 前端核心：Vue 3 + Naive UI 暗色主题 + Pinia 状态管理 + SSE 客户端
 - [x] Markdown 渲染（markdown-it + highlight.js）
 - [x] 结果展示：Naive UI DataTable + SQL 折叠 + Plotly 图表渲染 + 执行轨迹时间线
@@ -133,9 +134,9 @@ START → planner → tool_router → introduce_me/query_data/visualize/explain_
 - [x] Nginx 配置：SPA 静态文件 + API 反向代理 + `proxy_buffering off`
 - [x] systemd 服务文件：uvicorn 守护进程
 - [x] 一键部署脚本 `deploy/deploy.sh`（含 HTTPS 自动配置）
-- [x] `.env.example` 更新：新增 JWT_SECRET, CORS_ORIGINS 等配置项
+- [x] `.env.example` 更新：新增 CORS_ORIGINS、限流、Agent 参数等配置项
 - [x] Lottie 动画角色系统：6 种动画状态（idle/thinking/answering/presenting/error/welcome）
-- [x] 登录页渐变背景 + 动画角色
+- [x] 作品集主页（PortfolioView）+ 全屏聊天页（/chat）
 - [x] 品牌形象整合方案设计（方案 F：2D 二次元形象动画整合）
 
 **验收**：部署配置完整，可在服务器上一键部署 ✅

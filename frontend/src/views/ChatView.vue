@@ -1,101 +1,218 @@
 <template>
-  <n-layout has-sider class="chat-layout">
-    <!-- Sidebar -->
-    <ChatSidebar
-      v-if="!isMobile || showSidebar"
-      :class="{ 'mobile-overlay': isMobile }"
-      @close="showSidebar = false"
-    />
-    <div
-      v-if="isMobile && showSidebar"
-      class="sidebar-mask"
-      @click="showSidebar = false"
-    />
-
-    <!-- Main chat area (full width, no right panel) -->
-    <n-layout-content class="chat-main-area">
-      <!-- Mobile header -->
-      <div v-if="isMobile" class="mobile-bar">
-        <n-button text size="small" aria-label="打开侧栏菜单" @click="showSidebar = !showSidebar">
-          <template #icon>
-            <n-icon size="18"><svg viewBox="0 0 24 24"><path fill="currentColor" d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/></svg></n-icon>
-          </template>
-        </n-button>
-        <span class="mobile-title">Xiehaoyu-Agent</span>
-        <div />
+  <div class="chat-fullscreen">
+    <MouseSpotlight />
+    <header class="cf-bar">
+      <div class="cf-left">
+        <button class="cf-back" aria-label="返回作品集" @click="goBack">
+          <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></svg>
+          <span>返回作品集</span>
+        </button>
+        <div class="cf-title-group">
+          <span class="cf-title">AI 问答助手 · 谢浩宇的数字分身</span>
+          <span class="cf-subtitle">基于 LLM Agent · RAG 知识库 · Text2SQL · 自动可视化</span>
+        </div>
       </div>
-
-      <ChatMain />
-    </n-layout-content>
-  </n-layout>
+      <div class="cf-status">
+        <span class="cf-dot" aria-hidden="true" />
+        在线
+      </div>
+    </header>
+    <div class="cf-body">
+      <ChatWidget>
+        <template #empty>
+          <div class="cf-empty">
+            <AnimatedAvatar state="idle" :size="88" />
+            <p class="cf-welcome">
+              你好，我是 Xiehaoyu-Agent。可以问我个人经历与技术栈，
+              或让我查数据、画图表。
+            </p>
+            <div class="chips">
+              <button
+                v-for="q in WELCOME_QUESTIONS"
+                :key="q.question"
+                class="chip"
+                :disabled="chat.isStreaming"
+                @click="ask(q.question)"
+              >
+                {{ q.question }}
+              </button>
+            </div>
+          </div>
+        </template>
+      </ChatWidget>
+    </div>
+  </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
-import ChatSidebar from '@/components/chat/ChatSidebar.vue'
-import ChatMain from '@/components/chat/ChatMain.vue'
+import { useRouter } from 'vue-router'
+import ChatWidget from '@/components/chat/ChatWidget.vue'
+import AnimatedAvatar from '@/components/shared/AnimatedAvatar.vue'
+import MouseSpotlight from '@/components/portfolio/MouseSpotlight.vue'
+import { useChatStore } from '@/stores/chat'
+import { useEscapeKey } from '@/composables/useMediaQuery'
+import { WELCOME_QUESTIONS } from '@/utils/quick-questions'
 
-const showSidebar = ref(false)
-const isMobile = ref(false)
+const router = useRouter()
+const chat = useChatStore()
 
-function checkMobile() {
-  isMobile.value = window.innerWidth < 768
+function goBack() {
+  if (window.history.length > 1) {
+    router.back()
+  } else {
+    router.push({ path: '/', hash: '#ai-chat' })
+  }
 }
+useEscapeKey(goBack)
 
-function handleKeydown(e: KeyboardEvent) {
-  if (isMobile.value && e.key === 'Escape') showSidebar.value = false
+function ask(q: string) {
+  if (chat.isStreaming) return
+  chat.sendMessage(q)
 }
-
-onMounted(() => {
-  checkMobile()
-  window.addEventListener('resize', checkMobile)
-  window.addEventListener('keydown', handleKeydown)
-})
-onUnmounted(() => {
-  window.removeEventListener('resize', checkMobile)
-  window.removeEventListener('keydown', handleKeydown)
-})
 </script>
 
 <style scoped>
-.chat-layout {
-  height: 100vh;
-}
-.chat-main-area {
-  flex: 1;
+.chat-fullscreen {
   display: flex;
   flex-direction: column;
-  min-width: 0;
+  height: 100vh;
+  background: var(--bg-base);
 }
-
-.mobile-bar {
+.cf-bar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0.5rem 0.75rem;
-  border-bottom: 1px solid var(--border);
-  background: rgba(255, 255, 255, 0.95);
+  gap: 0.75rem;
+  padding: 0.85rem 1.75rem;
+  border-bottom: 1px solid rgba(100, 255, 218, 0.08);
+  background: rgba(17, 34, 64, 0.88);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  animation: cfSlideDown 0.5s cubic-bezier(0.16, 1, 0.3, 1);
 }
-.mobile-title {
-  font-size: 0.9rem;
+@keyframes cfSlideDown {
+  from { transform: translateY(-100%); opacity: 0; }
+  to   { transform: translateY(0); opacity: 1; }
+}
+.cf-left {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  min-width: 0;
+}
+.cf-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  color: var(--text-2);
+  padding: 0.5rem 0.85rem;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  background: transparent;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color 0.25s ease, background 0.25s ease, border-color 0.25s ease, transform 0.25s ease;
+}
+.cf-back:hover {
+  color: var(--accent-strong);
+  background: rgba(100, 255, 218, 0.06);
+  border-color: rgba(100, 255, 218, 0.15);
+  transform: translateX(-2px);
+}
+.cf-title-group {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.cf-title {
+  font-size: 0.95rem;
   font-weight: 600;
-  color: var(--text-1);
+  color: var(--text-bright);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.cf-subtitle {
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+  color: var(--text-2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.cf-status {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--accent-strong);
+  flex-shrink: 0;
+}
+.cf-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent-strong);
+  animation: pulse-glow 2s infinite;
+}
+.cf-body {
+  flex: 1;
+  min-height: 0;
+  max-width: 900px;
+  width: 100%;
+  margin: 0 auto;
+}
+.cf-empty {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 1rem;
+  gap: 1rem;
+}
+.cf-welcome {
+  color: var(--text-2);
+  font-size: 0.95rem;
+  line-height: 1.7;
+  max-width: 420px;
+  margin: 0;
+}
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.5rem;
+  max-width: 520px;
+}
+.chip {
+  font-family: var(--font-mono);
+  border: 1px solid rgba(100, 255, 218, 0.16);
+  border-radius: var(--radius-pill);
+  background: rgba(100, 255, 218, 0.06);
+  color: var(--accent-strong);
+  font-size: 0.75rem;
+  padding: 0.45rem 0.95rem;
+  cursor: pointer;
+  transition: color 0.2s, border-color 0.2s, background 0.2s, transform 0.2s;
+}
+.chip:hover:not(:disabled) {
+  border-color: rgba(100, 255, 218, 0.35);
+  background: rgba(100, 255, 218, 0.14);
+  transform: translateY(-2px);
+}
+.chip:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
 }
 
-.sidebar-mask {
-  position: fixed;
-  inset: 0;
-  z-index: 99;
-  background: rgba(0, 0, 0, 0.4);
-  animation: fadeIn 0.2s ease-out;
-}
-
-.mobile-overlay {
-  position: fixed !important;
-  top: 0; left: 0; bottom: 0;
-  z-index: 100;
-  width: 280px !important;
-  box-shadow: 4px 0 16px rgba(0, 0, 0, 0.15);
-  animation: slideInLeft 0.25s ease-out;
+@media (max-width: 640px) {
+  .cf-bar { padding: 0.75rem 1rem; }
+  .cf-subtitle { display: none; }
 }
 </style>

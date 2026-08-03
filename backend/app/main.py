@@ -49,7 +49,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from configs.settings import settings  # noqa: E402
-from backend.app.routers import auth, chat  # noqa: E402
+from backend.app.routers import chat  # noqa: E402
 
 app = FastAPI(
     title="Xiehaoyu-Agent API",
@@ -68,7 +68,6 @@ app.add_middleware(
 )
 
 # ── Routers ───────────────────────────────────────────────
-app.include_router(auth.router)
 app.include_router(chat.router)
 
 

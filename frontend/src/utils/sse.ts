@@ -45,7 +45,6 @@ const INITIAL_RETRY_DELAY_MS = 1000
 
 async function _doStream(
   question: string,
-  token: string,
   callbacks: SSECallbacks,
   signal?: AbortSignal,
 ): Promise<void> {
@@ -61,7 +60,6 @@ async function _doStream(
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
       },
       body: JSON.stringify({ question }),
       signal: controller.signal,
@@ -128,7 +126,6 @@ async function _doStream(
 
 export async function sseChatStream(
   question: string,
-  token: string,
   callbacks: SSECallbacks,
   signal?: AbortSignal,
 ): Promise<void> {
@@ -146,7 +143,6 @@ export async function sseChatStream(
 
     await _doStream(
       question,
-      token,
       {
         ...callbacks,
         onDone: () => { done = true },
@@ -161,8 +157,6 @@ export async function sseChatStream(
     lastError = errorMsg
     // Only retry on network errors, not on application errors
     if (errorMsg === '服务器返回了空的响应体') continue
-    // Don't retry on auth errors or bad requests
-    if (errorMsg.includes('未授权') || errorMsg.includes('Token')) break
   }
 
   callbacks.onError?.(lastError || '请求失败，已重试多次')

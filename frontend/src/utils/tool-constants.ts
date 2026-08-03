@@ -16,10 +16,10 @@ export const TAG_MAP: Record<string, 'info' | 'success' | 'warning' | 'default'>
 }
 
 export const STEP_COLORS: Record<string, string> = {
-  query_data: '#4f83e0',
-  visualize: '#0b7a55',
-  introduce_me: '#d97706',
-  explain_result: '#9333ea',
+  query_data: '#64b5f6',
+  visualize: '#64ffda',
+  introduce_me: '#ffb86c',
+  explain_result: '#c792ea',
 }
 
 export const CHART_LABELS: Record<string, string> = {

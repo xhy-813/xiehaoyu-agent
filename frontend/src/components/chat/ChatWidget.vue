@@ -1,8 +1,8 @@
 <template>
-  <div class="chat-main">
+  <div class="chat-widget">
     <!-- Messages area -->
     <div class="messages-area" ref="messagesRef">
-      <WelcomeCard v-if="chat.messages.length === 0" />
+      <slot v-if="chat.messages.length === 0" name="empty" />
       <div v-else class="messages-list">
         <ChatMessage
           v-for="msg in chat.messages"
@@ -29,7 +29,6 @@
 import { watch, nextTick, ref } from 'vue'
 import ChatMessage from './ChatMessage.vue'
 import ChatInput from './ChatInput.vue'
-import WelcomeCard from './WelcomeCard.vue'
 import { useChatStore } from '@/stores/chat'
 
 const chat = useChatStore()
@@ -62,22 +61,23 @@ watch(
 </script>
 
 <style scoped>
-.chat-main {
+.chat-widget {
   display: flex;
   flex-direction: column;
   height: 100%;
+  min-height: 0;
 }
 .messages-area {
   flex: 1;
   overflow-y: auto;
-  padding: 1.5rem 2rem;
+  padding: 1.25rem 1.5rem;
 }
 .messages-list {
   max-width: 768px;
   margin: 0 auto;
 }
 .input-area {
-  padding: 0 2rem 1.5rem;
+  padding: 0 1.5rem 1.25rem;
 }
 
 @media (max-width: 768px) {

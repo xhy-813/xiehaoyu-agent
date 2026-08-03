@@ -5,7 +5,6 @@ from __future__ import annotations
 import streamlit as st
 
 from agent.graph import run
-from ui.auth import check_rate_limit
 
 
 EXAMPLE_GROUPS = {
@@ -79,9 +78,6 @@ def render_chat() -> None:
     prompt = pending or st.chat_input("输入问题，或点击上方快捷问题")
 
     if not prompt:
-        return
-
-    if not check_rate_limit():
         return
 
     st.session_state["messages"].append({"role": "user", "content": prompt})

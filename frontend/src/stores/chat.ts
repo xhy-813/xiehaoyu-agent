@@ -1,7 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, shallowRef, computed, watch } from 'vue'
 import { sseChatStream, type Artifact, type SSEChatEvent } from '@/utils/sse'
-import { useAuthStore } from '@/stores/auth'
 import type { AvatarState } from '@/components/shared/AnimatedAvatar.vue'
 
 export interface ToolTrace {
@@ -87,8 +86,7 @@ export const useChatStore = defineStore('chat', () => {
   // ── Actions ──────────────────────────────────────────────────────────────
 
   async function sendMessage(question: string) {
-    const auth = useAuthStore()
-    if (!auth.token || isStreaming.value) return
+    if (isStreaming.value) return
 
     // Abort any existing stream
     if (abortController.value) {
@@ -124,7 +122,7 @@ export const useChatStore = defineStore('chat', () => {
 
     // 4. Start SSE stream
     try {
-      await sseChatStream(question, auth.token, {
+      await sseChatStream(question, {
         onPlannerDecision: (data: SSEChatEvent['data']) => {
           currentTool.value = data.next_action === 'call' ? (data.next_tool ?? null) : null
         },

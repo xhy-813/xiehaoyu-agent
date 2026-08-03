@@ -23,7 +23,7 @@
           @click="emit('stop')"
         >
           <template #icon>
-            <n-icon size="16" color="#fff">
+            <n-icon size="16" color="#0a192f">
               <svg viewBox="0 0 24 24"><path fill="currentColor" d="M6 6h12v12H6z"/></svg>
             </n-icon>
           </template>
@@ -38,7 +38,7 @@
           @click="handleSend"
         >
           <template #icon>
-            <n-icon size="18" color="#fff">
+            <n-icon size="18" color="#0a192f">
               <svg viewBox="0 0 24 24"><path fill="currentColor" d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
             </n-icon>
           </template>
@@ -80,7 +80,7 @@ function handleEnter(e: KeyboardEvent) {
   display: flex;
   align-items: flex-end;
   gap: 0.5rem;
-  background: #fff;
+  background: var(--bg-card);
   border: 1px solid var(--border);
   border-radius: 28px;
   box-shadow: var(--shadow-pop);
@@ -89,7 +89,7 @@ function handleEnter(e: KeyboardEvent) {
 }
 .input-container:focus-within {
   border-color: var(--accent-strong);
-  background: #fff;
+  background: var(--bg-card);
 }
 .input-container :deep(.n-input) {
   flex: 1;
@@ -105,11 +105,11 @@ function handleEnter(e: KeyboardEvent) {
   padding-bottom: 2px;
 }
 .send-btn {
-  background: var(--ink) !important;
+  background: var(--accent-strong) !important;
   transition: background 0.2s ease;
 }
-.send-btn:hover:not(:disabled) { background: var(--ink-hover) !important; }
-.send-btn:disabled { background: #c9ccd1 !important; }
+.send-btn:hover:not(:disabled) { background: var(--accent-strong-hover) !important; }
+.send-btn:disabled { background: #3a4a63 !important; }
 .char-count {
   font-size: 0.7rem;
   color: var(--text-3);

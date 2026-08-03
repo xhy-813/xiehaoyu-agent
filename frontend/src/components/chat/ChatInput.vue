@@ -14,7 +14,7 @@
         @keydown.enter="handleEnter"
       />
       <div class="input-actions">
-        <span class="char-count" v-if="text.length > 0">{{ text.length }}</span>
+        <span class="char-count" v-if="text.length > 0" :class="{ 'char-over': text.length > 300 }">{{ text.length }}{{ text.length > 300 ? '/300' : '' }}</span>
         <n-button
           v-if="streaming"
           circle
@@ -35,7 +35,7 @@
           aria-label="发送"
           title="发送"
           class="send-btn"
-          :disabled="!text.trim() || disabled"
+          :disabled="!text.trim() || disabled || text.length > 300"
           @click="handleSend"
         >
           <template #icon>
@@ -129,6 +129,11 @@ watch(() => props.streaming, (now) => {
   color: var(--text-3);
   min-width: 20px;
   text-align: center;
+  transition: color 0.2s;
+}
+.char-over {
+  color: #ff6b6b;
+  font-weight: 600;
 }
 .input-hint {
   text-align: center;

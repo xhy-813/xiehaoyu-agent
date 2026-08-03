@@ -20,14 +20,19 @@
       </div>
 
       <!-- Text content -->
-      <div v-if="message.content" class="msg-bubble">
+      <div v-if="message.content" class="msg-bubble" :class="{ 'msg-bubble-error': isError }">
         <div class="msg-content" :class="{ 'streaming-cursor': isStreaming }" v-html="renderedContent" />
       </div>
       <div v-else class="msg-loading">
         <div class="loading-row">
           <n-spin :size="16" />
-          <span v-if="isStreaming && chat.currentTool" class="msg-tool-status">
-            正在调用「{{ toolLabel(chat.currentTool) }}」…
+          <span class="msg-tool-status">
+            <template v-if="isStreaming && chat.currentTool">
+              正在调用「{{ toolLabel(chat.currentTool) }}」<span class="dot-anim">…</span>
+            </template>
+            <template v-else-if="isStreaming">
+              正在思考<span class="dot-anim">…</span>
+            </template>
           </span>
         </div>
         <!-- 实时轨迹（流式中，含流光） -->
@@ -179,6 +184,7 @@ function formatTime(ts: number) {
 async function copyContent() {
   try {
     await navigator.clipboard.writeText(props.message.content)
+    messageApi.success('已复制到剪贴板')
   } catch {
     messageApi.warning('复制失败，请检查浏览器权限设置')
   }
@@ -228,6 +234,13 @@ onMounted(() => {
 .chat-message.user .msg-role { flex-direction: row-reverse; }
 .msg-time { font-weight: 400; font-size: 0.75rem; color: var(--text-3); }
 .msg-bubble { position: relative; border-radius: 12px; overflow: hidden; overflow-wrap: break-word; }
+.msg-bubble-error {
+  background: rgba(255, 80, 80, 0.06);
+  border: 1px solid rgba(255, 80, 80, 0.2);
+  border-radius: 12px;
+  padding: 0.6rem 0.9rem;
+}
+.msg-bubble-error .msg-content { color: #ff8080; }
 .chat-message.user .msg-bubble {
   background: linear-gradient(135deg, rgba(100, 255, 218, 0.13), rgba(100, 255, 218, 0.05));
   border: 1px solid rgba(100, 255, 218, 0.1);
@@ -253,6 +266,17 @@ onMounted(() => {
 .msg-content :deep(li) { margin: 0.2em 0; }
 .msg-loading { padding: 0.5rem 0; }
 .loading-row { display: flex; align-items: center; gap: 0.5rem; }
+.dot-anim {
+  display: inline-block;
+  animation: dotFade 1.2s steps(3, end) infinite;
+  letter-spacing: 0.05em;
+}
+@keyframes dotFade {
+  0%   { opacity: 0; }
+  33%  { opacity: 0.4; }
+  66%  { opacity: 0.7; }
+  100% { opacity: 1; }
+}
 .live-trace { margin-top: 0.6rem; }
 .irt-connector.flow {
   background: linear-gradient(180deg, var(--accent-strong) 0%, rgba(136,146,176,0.25) 50%, var(--accent-strong) 100%);

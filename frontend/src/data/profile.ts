@@ -76,6 +76,16 @@ export const projects: Project[] = [
     tags: ['Python', 'Pandas', 'RFM 模型', 'Seaborn', 'Matplotlib'],
   },
   {
+    id: 'k12-datawarehouse',
+    title: 'K12 教育 Hive 数仓与 PowerBI 看板',
+    description:
+      '基于 50 万条 K12 订单数据搭建 ODS→DWD→DWS→DIM 四层 Hive 数仓，解决联报课程业绩归属问题，Hive 调优整体提速 80%，DataX 对接 PowerBI 交付 6 页经营看板。',
+    icon: '🏫',
+    thumb: 'linear-gradient(135deg, #1a2a4a, #0d1a30)',
+    stat: '50 万条订单 · ETL 提速 80% · 存储减少 75%',
+    tags: ['Hive', 'HDFS', 'DataX', 'MySQL', 'PowerBI', 'DAX', 'Java UDF', 'Shell'],
+  },
+  {
     id: 'stock-sentiment',
     title: '股市舆情分析系统',
     description:

@@ -47,16 +47,16 @@ function goChat() {
   border-color: rgba(100, 255, 218, 0.3);
   box-shadow: 0 0 40px rgba(100, 255, 218, 0.06);
 }
-/* 浮动光斑 */
+/* 浮动光斑（弱化版） */
 .ai-banner::before {
   content: '';
   position: absolute;
   top: -60%;
   right: -15%;
-  width: 420px;
-  height: 420px;
+  width: 320px;
+  height: 320px;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(100, 255, 218, 0.07) 0%, transparent 70%);
+  background: radial-gradient(circle, rgba(100, 255, 218, 0.03) 0%, transparent 70%);
   pointer-events: none;
   animation: float-blob 8s ease-in-out infinite;
 }

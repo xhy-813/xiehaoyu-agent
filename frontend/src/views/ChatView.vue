@@ -12,9 +12,21 @@
           <span class="cf-subtitle">基于 LLM Agent · RAG 知识库 · Text2SQL · 自动可视化</span>
         </div>
       </div>
-      <div class="cf-status">
-        <span class="cf-dot" aria-hidden="true" />
-        在线
+      <div class="cf-right">
+        <button
+          v-if="chat.messages.length > 0 && !chat.isStreaming"
+          class="cf-clear"
+          aria-label="清空对话"
+          title="清空对话"
+          @click="chat.clearChat()"
+        >
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+          <span>清空</span>
+        </button>
+        <div class="cf-status">
+          <span class="cf-dot" aria-hidden="true" />
+          在线
+        </div>
       </div>
     </header>
     <div class="cf-body">
@@ -142,6 +154,31 @@ function ask(q: string) {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+.cf-right {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-shrink: 0;
+}
+.cf-clear {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--text-3);
+  padding: 0.4rem 0.7rem;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  background: transparent;
+  cursor: pointer;
+  transition: color 0.2s, background 0.2s, border-color 0.2s;
+}
+.cf-clear:hover {
+  color: #ff7b7b;
+  background: rgba(255, 100, 100, 0.06);
+  border-color: rgba(255, 100, 100, 0.2);
 }
 .cf-status {
   display: flex;

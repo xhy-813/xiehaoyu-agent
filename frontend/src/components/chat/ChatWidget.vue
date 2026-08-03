@@ -58,6 +58,14 @@ watch(
   () => chat.currentTrace.length,
   () => nextTick(scrollToBottomIfNear)
 )
+// streaming 过程中 content 在逐字增加，需要实时跟滚
+watch(
+  () => {
+    const last = chat.messages[chat.messages.length - 1]
+    return last?.content?.length ?? 0
+  },
+  () => nextTick(scrollToBottomIfNear)
+)
 </script>
 
 <style scoped>

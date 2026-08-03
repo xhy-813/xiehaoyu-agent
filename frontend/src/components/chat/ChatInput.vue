@@ -4,6 +4,7 @@
       <n-input
         ref="inputRef"
         v-model:value="text"
+        :input-props="{ autofocus: true }"
         type="textarea"
         placeholder="输入问题，Enter 发送，Shift+Enter 换行..."
         :disabled="disabled"
@@ -50,12 +51,13 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 
-defineProps<{ disabled: boolean; streaming?: boolean }>()
+const props = defineProps<{ disabled: boolean; streaming?: boolean }>()
 const emit = defineEmits<{ send: [question: string]; stop: [] }>()
 
 const text = ref('')
+const inputRef = ref<{ focus: () => void } | null>(null)
 
 function handleSend() {
   const q = text.value.trim()
@@ -69,6 +71,18 @@ function handleEnter(e: KeyboardEvent) {
   e.preventDefault()
   handleSend()
 }
+
+// 页面挂载时自动聚焦
+onMounted(() => {
+  inputRef.value?.focus()
+})
+
+// streaming 结束后重新聚焦，方便连续提问
+watch(() => props.streaming, (now) => {
+  if (!now) {
+    setTimeout(() => inputRef.value?.focus(), 50)
+  }
+})
 </script>
 
 <style scoped>

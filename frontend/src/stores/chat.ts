@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { ref, shallowRef, computed, watch } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { sseChatStream, type Artifact, type SSEChatEvent } from '@/utils/sse'
 import type { AvatarState } from '@/components/shared/AnimatedAvatar.vue'
 
@@ -22,7 +22,7 @@ export interface ChatMessage {
 }
 
 export const useChatStore = defineStore('chat', () => {
-  const messages = shallowRef<ChatMessage[]>([])
+  const messages = ref<ChatMessage[]>([])
   const currentTrace = ref<ToolTrace[]>([])
   const isStreaming = ref(false)
   const streamError = ref<string | null>(null)

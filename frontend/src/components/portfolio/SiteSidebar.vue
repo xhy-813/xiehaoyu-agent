@@ -39,6 +39,24 @@
           <svg viewBox="0 0 24 24" width="19" height="19"><path fill="currentColor" d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-9 9H7V9h4v2zm6 0h-4V9h4v2z"/></svg>
         </button>
       </li>
+      <!-- 主题切换按钮 -->
+      <li>
+        <button
+          class="ss-theme-btn"
+          :aria-label="theme === 'dark' ? '切换到浅色模式' : '切换到深色模式'"
+          :title="theme === 'dark' ? '切换到浅色模式' : '切换到深色模式'"
+          @click="toggleTheme"
+        >
+          <!-- 深色模式显示太阳（点击切换到浅色） -->
+          <svg v-if="theme === 'dark'" viewBox="0 0 24 24" width="19" height="19">
+            <path fill="currentColor" d="M12 7c-2.76 0-5 2.24-5 5s2.24 5 5 5 5-2.24 5-5-2.24-5-5-5zM2 13h2c.55 0 1-.45 1-1s-.45-1-1-1H2c-.55 0-1 .45-1 1s.45 1 1 1zm18 0h2c.55 0 1-.45 1-1s-.45-1-1-1h-2c-.55 0-1 .45-1 1s.45 1 1 1zM11 2v2c0 .55.45 1 1 1s1-.45 1-1V2c0-.55-.45-1-1-1s-1 .45-1 1zm0 18v2c0 .55.45 1 1 1s1-.45 1-1v-2c0-.55-.45-1-1-1s-1 .45-1 1zM5.99 4.58a.996.996 0 0 0-1.41 0 .996.996 0 0 0 0 1.41l1.06 1.06c.39.39 1.03.39 1.41 0s.39-1.03 0-1.41L5.99 4.58zm12.37 12.37a.996.996 0 0 0-1.41 0 .996.996 0 0 0 0 1.41l1.06 1.06c.39.39 1.03.39 1.41 0a.996.996 0 0 0 0-1.41l-1.06-1.06zm1.06-12.37-1.06 1.06a.996.996 0 0 0 0 1.41c.39.39 1.03.39 1.41 0l1.06-1.06a.996.996 0 0 0 0-1.41.996.996 0 0 0-1.41 0zM7.05 18.36l-1.06 1.06a.996.996 0 0 0 0 1.41c.39.39 1.03.39 1.41 0l1.06-1.06a.996.996 0 0 0 0-1.41.996.996 0 0 0-1.41 0z"/>
+          </svg>
+          <!-- 浅色模式显示月亮（点击切换到深色） -->
+          <svg v-else viewBox="0 0 24 24" width="19" height="19">
+            <path fill="currentColor" d="M12 3a9 9 0 1 0 9 9c0-.46-.04-.92-.1-1.36a5.389 5.389 0 0 1-4.4 2.26 5.403 5.403 0 0 1-3.14-9.8c-.44-.06-.9-.1-1.36-.1z"/>
+          </svg>
+        </button>
+      </li>
     </ul>
   </aside>
 </template>
@@ -47,6 +65,7 @@
 import { useMessage } from 'naive-ui'
 import { profile } from '@/data/profile'
 import { useScrollSpy } from '@/composables/useScrollSpy'
+import { useTheme } from '@/composables/useTheme'
 
 const links = [
   { id: 'about', label: '关于' },
@@ -58,6 +77,7 @@ const links = [
 const activeId = useScrollSpy(links.map((l) => l.id))
 
 const message = useMessage()
+const { theme, toggle: toggleTheme } = useTheme()
 
 async function copyWechat() {
   try {
@@ -188,7 +208,8 @@ async function copyWechat() {
   padding: 24px 0 0;
 }
 .ss-socials a,
-.ss-wechat {
+.ss-wechat,
+.ss-theme-btn {
   width: 38px;
   height: 38px;
   border-radius: 50%;
@@ -203,11 +224,19 @@ async function copyWechat() {
   transition: color 0.3s ease, border-color 0.3s ease, transform 0.3s ease, box-shadow 0.3s ease;
 }
 .ss-socials a:hover,
-.ss-wechat:hover {
+.ss-wechat:hover,
+.ss-theme-btn:hover {
   color: var(--accent-strong);
   border-color: rgba(100, 255, 218, 0.25);
   transform: translateY(-3px);
   box-shadow: 0 4px 14px rgba(100, 255, 218, 0.12);
+}
+/* 浅色模式下 hover 颜色换成蓝色系 */
+[data-theme="light"] .ss-socials a:hover,
+[data-theme="light"] .ss-wechat:hover,
+[data-theme="light"] .ss-theme-btn:hover {
+  border-color: rgba(9, 105, 218, 0.25);
+  box-shadow: 0 4px 14px rgba(9, 105, 218, 0.12);
 }
 
 /* ≤1200px：左栏收窄 */

@@ -235,3 +235,94 @@ pre code.hljs {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+/* ============================================================
+   浅色主题（data-theme="light"）— GitHub 纯净白底风格
+   ============================================================ */
+
+[data-theme="light"] {
+  /* 背景 */
+  --bg-base: #f6f8fa;
+  --bg-card: #ffffff;
+  --bg-card-lighter: #eef1f6;
+  --bg-bubble-user: #dbeafe;
+  --bg-subtle: rgba(9, 105, 218, 0.04);
+  /* 品牌（GitHub 深蓝） */
+  --accent: #0969da;
+  --accent-strong: #0969da;
+  --accent-strong-hover: #0550ae;
+  --accent-border: rgba(9, 105, 218, 0.25);
+  --ink: #0969da;
+  --ink-hover: #0550ae;
+  /* 文本 */
+  --text-bright: #1a1a2e;
+  --text-1: #24292f;
+  --text-2: #57606a;
+  --text-3: #8c959f;
+  /* 结构 */
+  --border: #d0d7de;
+  --border-strong: rgba(9, 105, 218, 0.4);
+  --shadow-pop: 0 1px 3px rgba(31, 35, 40, 0.12), 0 8px 24px rgba(66, 74, 83, 0.12);
+  --shadow-card: 0 1px 3px rgba(31, 35, 40, 0.12), 0 8px 24px rgba(66, 74, 83, 0.12);
+  /* 工具轨迹色 */
+  --tool-query: #0969da;
+  --tool-viz: #0d9488;
+  --tool-rag: #b45309;
+  --tool-explain: #7c3aed;
+}
+
+/* 浅色模式：页面和全局文字 */
+[data-theme="light"] html,
+[data-theme="light"] body,
+[data-theme="light"] #app {
+  background: var(--bg-base);
+  color: var(--text-1);
+}
+
+/* 浅色模式：pill 标签 */
+[data-theme="light"] .pill {
+  color: var(--accent-strong);
+  background: rgba(9, 105, 218, 0.07);
+  border-color: rgba(9, 105, 218, 0.2);
+}
+[data-theme="light"] .pill:hover {
+  background: rgba(9, 105, 218, 0.14);
+  border-color: rgba(9, 105, 218, 0.35);
+}
+
+/* 浅色模式：代码块 */
+[data-theme="light"] :not(pre) > code {
+  background: rgba(9, 105, 218, 0.07);
+  color: #0550ae;
+}
+
+/* 浅色模式：选中色 */
+[data-theme="light"] ::selection {
+  background: rgba(9, 105, 218, 0.2);
+  color: var(--text-1);
+}
+
+/* 浅色模式：scrollbar */
+[data-theme="light"] ::-webkit-scrollbar-thumb {
+  background: rgba(57, 65, 74, 0.25);
+}
+[data-theme="light"] ::-webkit-scrollbar-thumb:hover {
+  background: rgba(57, 65, 74, 0.4);
+}
+
+/* 浅色模式：portfolio 流光（蓝色系，白底可见） */
+[data-theme="light"] .portfolio {
+  background:
+    radial-gradient(
+      600px circle at var(--spotlight-x, 50vw) var(--spotlight-y, 50vh),
+      rgba(9, 105, 218, 0.08),
+      transparent 80%
+    ),
+    var(--bg-base);
+  background-attachment: fixed, scroll;
+}
+
+/* 浅色模式：streaming cursor */
+[data-theme="light"] .streaming-cursor::after {
+  color: var(--accent-strong);
+}

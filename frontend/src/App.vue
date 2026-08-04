@@ -1,5 +1,5 @@
 <template>
-  <n-config-provider :theme="darkTheme" :theme-overrides="themeOverrides">
+  <n-config-provider :theme="naiveTheme" :theme-overrides="themeOverrides">
     <n-message-provider>
       <router-view />
     </n-message-provider>
@@ -7,10 +7,16 @@
 </template>
 
 <script setup lang="ts">
-import { darkTheme } from 'naive-ui'
+import { computed } from 'vue'
+import { darkTheme, lightTheme } from 'naive-ui'
 import type { GlobalThemeOverrides } from 'naive-ui'
+import { useTheme } from '@/composables/useTheme'
 
-const themeOverrides: GlobalThemeOverrides = {
+const { theme } = useTheme()
+
+const naiveTheme = computed(() => theme.value === 'dark' ? darkTheme : lightTheme)
+
+const darkOverrides: GlobalThemeOverrides = {
   common: {
     fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans SC", "PingFang SC", "Microsoft YaHei", Inter, sans-serif',
     borderRadius: '10px',
@@ -37,10 +43,42 @@ const themeOverrides: GlobalThemeOverrides = {
     tdColorStriped: 'rgba(100,255,218,0.02)',
     borderColor: '#233554',
   },
-  Tag: {
-    // 使用默认深色配色即可
-  },
+  Tag: {},
 }
+
+const lightOverrides: GlobalThemeOverrides = {
+  common: {
+    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans SC", "PingFang SC", "Microsoft YaHei", Inter, sans-serif',
+    borderRadius: '10px',
+    primaryColor: '#0969da',
+    primaryColorHover: '#0550ae',
+    primaryColorPressed: '#033d8b',
+    primaryColorSuppl: '#0969da',
+  },
+  Card: {
+    color: '#ffffff',
+    borderColor: '#d0d7de',
+  },
+  Input: {
+    color: '#f6f8fa',
+    colorFocus: '#ffffff',
+    border: '1px solid #d0d7de',
+    borderHover: '1px solid #0969da',
+    borderFocus: '1px solid #0969da',
+    boxShadowFocus: '0 0 0 2px rgba(9,105,218,0.15)',
+  },
+  DataTable: {
+    thColor: 'rgba(9,105,218,0.04)',
+    tdColor: '#ffffff',
+    tdColorStriped: 'rgba(9,105,218,0.02)',
+    borderColor: '#d0d7de',
+  },
+  Tag: {},
+}
+
+const themeOverrides = computed<GlobalThemeOverrides>(() =>
+  theme.value === 'dark' ? darkOverrides : lightOverrides
+)
 </script>
 
 <style>

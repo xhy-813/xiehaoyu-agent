@@ -94,10 +94,15 @@ function ask(q: string) {
   justify-content: space-between;
   gap: 0.75rem;
   padding: 0.85rem 1.75rem;
-  border-bottom: 1px solid rgba(100, 255, 218, 0.08);
-  background: rgba(17, 34, 64, 0.88);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  border-bottom: 1px solid rgba(100, 255, 218, 0.1);
+  background: linear-gradient(
+    180deg,
+    rgba(10, 25, 47, 0.96) 0%,
+    rgba(17, 34, 64, 0.92) 100%
+  );
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  box-shadow: 0 1px 0 rgba(100, 255, 218, 0.06), 0 4px 24px rgba(0, 0, 0, 0.2);
   animation: cfSlideDown 0.5s cubic-bezier(0.16, 1, 0.3, 1);
 }
 @keyframes cfSlideDown {

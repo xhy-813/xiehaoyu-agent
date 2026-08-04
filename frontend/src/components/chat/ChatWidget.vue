@@ -78,18 +78,26 @@ watch(
 .messages-area {
   flex: 1;
   overflow-y: auto;
-  padding: 1.25rem 1.5rem;
+  padding: 1.5rem 1.5rem 0.5rem;
 }
 .messages-list {
   max-width: 768px;
   margin: 0 auto;
 }
+/* 输入区：粘性底部 + 毛玻璃，与消息区有层次感 */
 .input-area {
-  padding: 0 1.5rem 1.25rem;
+  padding: 0.75rem 1.5rem 1.25rem;
+  background: linear-gradient(
+    0deg,
+    rgba(10, 25, 47, 0.98) 60%,
+    rgba(10, 25, 47, 0.0) 100%
+  );
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
 }
 
 @media (max-width: 768px) {
-  .messages-area { padding: 0.75rem 1rem; }
-  .input-area { padding: 0 0.75rem 0.75rem; }
+  .messages-area { padding: 0.75rem 1rem 0.5rem; }
+  .input-area { padding: 0.5rem 0.75rem 0.75rem; }
 }
 </style>

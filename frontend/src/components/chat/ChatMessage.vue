@@ -222,17 +222,24 @@ onMounted(() => {
 .chat-message {
   display: flex;
   gap: 0.8rem;
-  padding: 1.5rem 0;
+  padding: 1.25rem 0;
+  /* 悬浮时微亮背景，增加交互感 */
+  border-radius: 12px;
+  transition: background 0.2s;
+}
+.chat-message:hover {
+  background: rgba(100, 255, 218, 0.015);
 }
 .chat-message.user { flex-direction: row-reverse; }
 .msg-avatar { flex-shrink: 0; padding-top: 2px; }
 .msg-body { flex: 1; min-width: 0; }
 .msg-role {
   font-size: 0.75rem; font-weight: 600; color: var(--text-3);
-  margin-bottom: 0.3rem; display: flex; align-items: center; gap: 0.5rem;
+  margin-bottom: 0.35rem; display: flex; align-items: center; gap: 0.5rem;
+  letter-spacing: 0.03em;
 }
 .chat-message.user .msg-role { flex-direction: row-reverse; }
-.msg-time { font-weight: 400; font-size: 0.75rem; color: var(--text-3); }
+.msg-time { font-weight: 400; font-size: 0.72rem; color: var(--text-3); opacity: 0.65; }
 .msg-bubble { position: relative; border-radius: 12px; overflow: hidden; overflow-wrap: break-word; }
 .msg-bubble-error {
   background: rgba(255, 80, 80, 0.06);
@@ -241,16 +248,30 @@ onMounted(() => {
   padding: 0.6rem 0.9rem;
 }
 .msg-bubble-error .msg-content { color: #ff8080; }
+
+/* 用户气泡：更饱和的描边渐变 */
 .chat-message.user .msg-bubble {
-  background: linear-gradient(135deg, rgba(100, 255, 218, 0.13), rgba(100, 255, 218, 0.05));
-  border: 1px solid rgba(100, 255, 218, 0.1);
-  padding: 0.7rem 1rem;
-  max-width: 70%;
-  border-radius: 18px;
+  background: linear-gradient(
+    135deg,
+    rgba(100, 255, 218, 0.14) 0%,
+    rgba(100, 255, 218, 0.06) 100%
+  );
+  border: 1px solid rgba(100, 255, 218, 0.18);
+  box-shadow: 0 2px 12px rgba(100, 255, 218, 0.06);
+  padding: 0.75rem 1rem;
+  max-width: 72%;
+  border-radius: 18px 18px 4px 18px;
   margin-left: auto;
 }
+
+/* 助手气泡：左侧 accent 竖线 */
+.chat-message.assistant .msg-bubble {
+  border-left: 2px solid rgba(100, 255, 218, 0.25);
+  padding-left: 0.75rem;
+}
+
 .msg-content {
-  font-size: 0.875rem; line-height: 1.7; color: var(--text-1); word-break: break-word;
+  font-size: 0.875rem; line-height: 1.75; color: var(--text-1); word-break: break-word;
 }
 .msg-content :deep(p) { margin: 0.5em 0; }
 .msg-content :deep(p:first-child) { margin-top: 0; }
@@ -303,7 +324,7 @@ onMounted(() => {
 
 /* Inline result */
 .inline-result {
-  margin-top: 0.6rem;
+  margin-top: 0.75rem;
   border: 1px solid var(--border);
   background: var(--bg-card);
   border-radius: 10px;

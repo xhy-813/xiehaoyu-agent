@@ -65,6 +65,18 @@
   /* 返回按钮 hover */
   --back-btn-hover-bg: rgba(100, 255, 218, 0.06);
   --back-btn-hover-border: rgba(100, 255, 218, 0.15);
+  /* 新增：消息气泡 */
+  --msg-assistant-bg: linear-gradient(135deg, rgba(100,255,218,0.03) 0%, transparent 100%);
+  --msg-user-shadow: 0 2px 12px rgba(100,255,218,0.06);
+  /* 新增：结果卡片 */
+  --result-card-shadow: 0 2px 12px rgba(0,0,0,0.15);
+  /* 新增：回到底部按钮 */
+  --scroll-to-bottom-bg: rgba(17, 34, 64, 0.9);
+  --scroll-to-bottom-border: rgba(100, 255, 218, 0.2);
+  --scroll-to-bottom-hover-border: rgba(100, 255, 218, 0.4);
+  /* 新增：代码复制按钮 */
+  --code-copy-btn-bg: rgba(100, 255, 218, 0.08);
+  --code-copy-btn-hover-bg: rgba(100, 255, 218, 0.16);
 }
 
 html {
@@ -84,10 +96,10 @@ html, body, #app {
 
 /* ── Scrollbar ────────────────────────────────────────── */
 
-::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar { width: 4px; height: 4px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: rgba(136, 146, 176, 0.35); border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: rgba(136, 146, 176, 0.55); }
+::-webkit-scrollbar-thumb { background: rgba(136, 146, 176, 0.2); border-radius: 2px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(136, 146, 176, 0.45); }
 
 /* ── Selection ─────────────────────────────── */
 
@@ -103,6 +115,9 @@ html, body, #app {
   outline-offset: 2px;
   border-radius: 4px;
 }
+
+a { text-decoration: none; transition: text-decoration 0.2s ease; }
+a:hover { text-decoration: underline; }
 
 /* ── Markdown Code Blocks ─────────────────────────────── */
 
@@ -187,6 +202,10 @@ pre code.hljs {
   33% { transform: translate(15px, -20px); }
   66% { transform: translate(-10px, 15px); }
 }
+@keyframes slideDown {
+  from { max-height: 0; opacity: 0; }
+  to   { max-height: 600px; opacity: 1; }
+}
 
 .chat-message-enter {
   animation: fadeInUp 0.35s ease-out;
@@ -201,9 +220,13 @@ pre code.hljs {
 /* ── Streaming Cursor ──────────────────────────────────── */
 
 .streaming-cursor::after {
-  content: '▊';
+  content: '|';
   animation: blink 1s step-end infinite;
   color: var(--accent-strong);
+  transition: opacity 0.3s ease;
+}
+.streaming-cursor.fade-out::after {
+  opacity: 0;
 }
 
 /* ── Naive UI Overrides ────────────────────────────────── */
@@ -329,6 +352,18 @@ pre code.hljs {
   /* 返回按钮 hover */
   --back-btn-hover-bg: rgba(9, 105, 218, 0.06);
   --back-btn-hover-border: rgba(9, 105, 218, 0.2);
+  /* 新增：消息气泡 */
+  --msg-assistant-bg: linear-gradient(135deg, rgba(9,105,218,0.03) 0%, transparent 100%);
+  --msg-user-shadow: 0 2px 12px rgba(9,105,218,0.06);
+  /* 新增：结果卡片 */
+  --result-card-shadow: 0 1px 3px rgba(31,35,40,0.12);
+  /* 新增：回到底部按钮 */
+  --scroll-to-bottom-bg: rgba(255, 255, 255, 0.9);
+  --scroll-to-bottom-border: rgba(9, 105, 218, 0.2);
+  --scroll-to-bottom-hover-border: rgba(9, 105, 218, 0.4);
+  /* 新增：代码复制按钮 */
+  --code-copy-btn-bg: rgba(9, 105, 218, 0.07);
+  --code-copy-btn-hover-bg: rgba(9, 105, 218, 0.14);
 }
 
 /* 浅色模式：页面和全局文字 */
@@ -385,4 +420,8 @@ pre code.hljs {
 /* 浅色模式：streaming cursor */
 [data-theme="light"] .streaming-cursor::after {
   color: var(--accent-strong);
+  transition: opacity 0.3s ease;
+}
+[data-theme="light"] .streaming-cursor.fade-out::after {
+  opacity: 0;
 }

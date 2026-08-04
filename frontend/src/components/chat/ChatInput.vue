@@ -142,4 +142,20 @@ watch(() => props.streaming, (now) => {
   color: var(--text-3);
   margin: 0.4rem 0 0;
 }
+
+/* ── 浅色模式覆盖 ─────────────────────────────────────── */
+:global([data-theme="light"]) .input-container {
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 1px 3px rgba(31, 35, 40, 0.12), 0 4px 16px rgba(31, 35, 40, 0.08),
+              inset 0 1px 0 rgba(255, 255, 255, 0.8);
+}
+:global([data-theme="light"]) .input-container:focus-within {
+  border-color: rgba(9, 105, 218, 0.5);
+  background: #ffffff;
+  box-shadow: 0 1px 3px rgba(31, 35, 40, 0.12), 0 4px 16px rgba(31, 35, 40, 0.08),
+              0 0 0 3px rgba(9, 105, 218, 0.08);
+}
+:global([data-theme="light"]) .send-btn:disabled {
+  background: #d0d7de !important;
+}
 </style>

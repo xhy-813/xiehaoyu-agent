@@ -255,4 +255,30 @@ function ask(q: string) {
   .cf-bar { padding: 0.75rem 1rem; }
   .cf-subtitle { display: none; }
 }
+
+/* ── 浅色模式覆盖 ─────────────────────────────────────── */
+:global([data-theme="light"]) .cf-bar {
+  border-bottom-color: rgba(9, 105, 218, 0.12);
+  background: linear-gradient(
+    180deg,
+    rgba(246, 248, 250, 0.97) 0%,
+    rgba(255, 255, 255, 0.94) 100%
+  );
+  box-shadow: 0 1px 0 rgba(9, 105, 218, 0.08), 0 4px 24px rgba(31, 35, 40, 0.08);
+}
+:global([data-theme="light"]) .cf-back:hover {
+  background: rgba(9, 105, 218, 0.06);
+  border-color: rgba(9, 105, 218, 0.2);
+}
+:global([data-theme="light"]) .cf-status {
+  color: var(--accent-strong);
+}
+:global([data-theme="light"]) .chip {
+  border-color: rgba(9, 105, 218, 0.2);
+  background: rgba(9, 105, 218, 0.05);
+}
+:global([data-theme="light"]) .chip:hover:not(:disabled) {
+  border-color: rgba(9, 105, 218, 0.4);
+  background: rgba(9, 105, 218, 0.1);
+}
 </style>

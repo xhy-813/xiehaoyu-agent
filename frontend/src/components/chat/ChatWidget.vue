@@ -100,4 +100,13 @@ watch(
   .messages-area { padding: 0.75rem 1rem 0.5rem; }
   .input-area { padding: 0.5rem 0.75rem 0.75rem; }
 }
+
+/* ── 浅色模式覆盖 ─────────────────────────────────────── */
+:global([data-theme="light"]) .input-area {
+  background: linear-gradient(
+    0deg,
+    rgba(246, 248, 250, 0.99) 60%,
+    rgba(246, 248, 250, 0.0) 100%
+  );
+}
 </style>

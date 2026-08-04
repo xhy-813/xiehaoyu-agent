@@ -25,7 +25,18 @@ import SiteFooter from '@/components/portfolio/SiteFooter.vue'
 <style scoped>
 .portfolio {
   min-height: 100vh;
-  background: var(--bg-base);
+  /* brittanychiang v5 技法：spotlight 渐变作为 background 层叠在纯色底色之上，
+     而非独立的 z-index 覆盖层——鼠标光晕照亮背景，不遮挡文字 */
+  background:
+    radial-gradient(
+      600px circle at var(--spotlight-x, 50vw) var(--spotlight-y, 50vh),
+      rgba(29, 78, 216, 0.15),
+      transparent 80%
+    ),
+    var(--bg-base);
+}
+@media (prefers-reduced-motion: reduce), (hover: none), (pointer: coarse) {
+  .portfolio { background: var(--bg-base); }
 }
 /* 右列：margin-left 与 SiteSidebar 宽度联动（42% / ≤1200px 38% / ≤980px 单列） */
 .right-col {

@@ -1,6 +1,4 @@
-<template>
-  <div id="spotlight" aria-hidden="true" />
-</template>
+<template><!-- spotlight: CSS vars injected onto :root, gradient lives in PortfolioView --></template>
 
 <script setup lang="ts">
 import { onMounted, onBeforeUnmount } from 'vue'
@@ -13,21 +11,19 @@ onMounted(() => {
     return
   }
 
-  const el = document.getElementById('spotlight')
-  if (!el) return
-
+  const root = document.documentElement
   let mx = window.innerWidth / 2
   let my = window.innerHeight / 2
   let ticking = false
   let rafId = 0
 
   function update() {
-    el!.style.setProperty('--mx', mx + 'px')
-    el!.style.setProperty('--my', my + 'px')
+    root.style.setProperty('--spotlight-x', mx + 'px')
+    root.style.setProperty('--spotlight-y', my + 'px')
     ticking = false
   }
 
-  // initial render at viewport center
+  // seed position so there's no jump on first move
   update()
 
   function onMouseMove(e: MouseEvent) {
@@ -47,25 +43,3 @@ onMounted(() => {
   })
 })
 </script>
-
-<style scoped>
-#spotlight {
-  position: fixed;
-  inset: 0;
-  z-index: 9999;
-  pointer-events: none;
-  background: radial-gradient(
-    700px circle at var(--mx, 50vw) var(--my, 50vh),
-    rgba(100, 255, 218, 0.22),
-    rgba(100, 255, 218, 0.08) 25%,
-    transparent 65%
-  );
-  will-change: background;
-}
-@media (hover: none), (pointer: coarse) {
-  #spotlight { display: none; }
-}
-@media (prefers-reduced-motion: reduce) {
-  #spotlight { display: none; }
-}
-</style>

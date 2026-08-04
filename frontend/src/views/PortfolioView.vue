@@ -25,8 +25,9 @@ import SiteFooter from '@/components/portfolio/SiteFooter.vue'
 <style scoped>
 .portfolio {
   min-height: 100vh;
-  /* brittanychiang v5 技法：spotlight 渐变作为 background 层叠在纯色底色之上，
-     而非独立的 z-index 覆盖层——鼠标光晕照亮背景，不遮挡文字 */
+  /* brittanychiang v5 技法：spotlight 渐变叠在底色之上
+     background-attachment: fixed 使渐变坐标系固定在视口，
+     与鼠标的 clientX/Y 坐标系一致，滚动时光晕正确跟随 */
   background:
     radial-gradient(
       600px circle at var(--spotlight-x, 50vw) var(--spotlight-y, 50vh),
@@ -34,9 +35,10 @@ import SiteFooter from '@/components/portfolio/SiteFooter.vue'
       transparent 80%
     ),
     var(--bg-base);
+  background-attachment: fixed, scroll;
 }
 @media (prefers-reduced-motion: reduce), (hover: none), (pointer: coarse) {
-  .portfolio { background: var(--bg-base); }
+  .portfolio { background: var(--bg-base); background-attachment: scroll; }
 }
 /* 右列：margin-left 与 SiteSidebar 宽度联动（42% / ≤1200px 38% / ≤980px 单列） */
 .right-col {

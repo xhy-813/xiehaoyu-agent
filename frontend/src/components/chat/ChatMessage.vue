@@ -1,5 +1,11 @@
 <template>
-  <div class="chat-message" :class="[message.role, { 'chat-message-enter': animate }]">
+  <div
+    class="chat-message"
+    :class="[
+      message.role,
+      { 'chat-message-enter': animate, 'chat-message-consecutive': isConsecutive }
+    ]"
+  >
     <!-- Avatar -->
     <div class="msg-avatar">
       <n-avatar v-if="message.role === 'user'" :size="34" round :style="{ background: 'linear-gradient(135deg, #6366f1, #818cf8)' }">
@@ -16,7 +22,7 @@
     <div class="msg-body">
       <div class="msg-role">
         {{ message.role === 'user' ? '你' : 'Xiehaoyu-Agent' }}
-        <span class="msg-time">{{ formatTime(message.timestamp) }}</span>
+        <span v-if="!isConsecutive" class="msg-time">{{ formatTime(message.timestamp) }}</span>
       </div>
 
       <!-- Text content -->
@@ -153,6 +159,12 @@ const chat = useChatStore()
 const messageApi = useMessage()
 const animate = ref(true)
 
+const isConsecutive = computed(() => {
+  const idx = chat.messages.indexOf(props.message as ChatMessage)
+  if (idx <= 0) return false
+  return chat.messages[idx - 1].role === props.message.role
+})
+
 const isLastAssistant = computed(() =>
   props.message.role === 'assistant' &&
   props.message === chat.messages[chat.messages.length - 1]
@@ -231,6 +243,15 @@ onMounted(() => {
   background: rgba(100, 255, 218, 0.015);
 }
 .chat-message.user { flex-direction: row-reverse; }
+.chat-message-consecutive {
+  padding-top: 0.15rem;
+}
+.chat-message-consecutive .msg-avatar {
+  visibility: hidden;
+}
+.chat-message-consecutive .msg-role {
+  display: none;
+}
 .msg-avatar { flex-shrink: 0; padding-top: 2px; }
 .msg-body { flex: 1; min-width: 0; }
 .msg-role {
@@ -257,7 +278,7 @@ onMounted(() => {
     rgba(100, 255, 218, 0.06) 100%
   );
   border: 1px solid rgba(100, 255, 218, 0.18);
-  box-shadow: 0 2px 12px rgba(100, 255, 218, 0.06);
+  box-shadow: 0 2px 12px rgba(100, 255, 218, 0.06), var(--msg-user-shadow);
   padding: 0.75rem 1rem;
   max-width: 72%;
   border-radius: 18px 18px 4px 18px;
@@ -268,10 +289,12 @@ onMounted(() => {
 .chat-message.assistant .msg-bubble {
   border-left: 2px solid rgba(100, 255, 218, 0.25);
   padding-left: 0.75rem;
+  background: var(--msg-assistant-bg);
+  border-radius: 0 8px 8px 0;
 }
 
 .msg-content {
-  font-size: 0.875rem; line-height: 1.75; color: var(--text-1); word-break: break-word;
+  font-size: 0.875rem; line-height: 1.7; color: var(--text-1); word-break: break-word;
 }
 .msg-content :deep(p) { margin: 0.5em 0; }
 .msg-content :deep(p:first-child) { margin-top: 0; }

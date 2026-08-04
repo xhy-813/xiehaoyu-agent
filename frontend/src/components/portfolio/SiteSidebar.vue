@@ -136,7 +136,7 @@ async function copyWechat() {
   max-width: 360px;
   margin: 0;
   padding-top: 12px;
-  border-top: 1px solid rgba(136, 146, 176, 0.15);
+  border-top: 1px solid var(--border-subtle);
 }
 
 /* 横线指示器导航 */
@@ -251,7 +251,7 @@ async function copyWechat() {
     width: 100%;
     max-width: none;
     padding: 8vh 6vw 4vh;
-    border-bottom: 1px solid rgba(136, 146, 176, 0.1);
+    border-bottom: 1px solid var(--border-subtle);
     overflow: visible;
   }
   .ss-hero { margin-bottom: 32px; }

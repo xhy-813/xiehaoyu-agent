@@ -16,7 +16,7 @@ import { profile } from '@/data/profile'
 .site-footer {
   text-align: center;
   padding-top: 1.9rem;
-  border-top: 1px solid rgba(136, 146, 176, 0.1);
+  border-top: 1px solid var(--border-subtle);
 }
 .site-footer p {
   font-family: var(--font-mono);

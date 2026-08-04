@@ -31,8 +31,8 @@ function goChat() {
 
 <style scoped>
 .ai-banner {
-  background: linear-gradient(135deg, rgba(100, 255, 218, 0.07) 0%, rgba(100, 255, 218, 0.02) 50%, transparent 100%);
-  border: 1px solid rgba(100, 255, 218, 0.16);
+  background: var(--ai-banner-bg);
+  border: 1px solid var(--ai-banner-border);
   border-radius: 14px;
   padding: 46px 42px;
   display: flex;
@@ -44,8 +44,8 @@ function goChat() {
   transition: border-color 0.3s ease, box-shadow 0.3s ease;
 }
 .ai-banner:hover {
-  border-color: rgba(100, 255, 218, 0.3);
-  box-shadow: 0 0 40px rgba(100, 255, 218, 0.06);
+  border-color: var(--ai-banner-hover-border);
+  box-shadow: var(--ai-banner-hover-shadow);
 }
 /* 浮动光斑（弱化版） */
 .ai-banner::before {
@@ -68,12 +68,12 @@ function goChat() {
   font-family: var(--font-mono);
   font-size: 0.72rem;
   color: var(--accent-strong);
-  background: rgba(100, 255, 218, 0.1);
+  background: var(--ai-badge-bg);
   padding: 5px 13px;
   border-radius: 20px;
   margin-bottom: 16px;
   font-weight: 500;
-  border: 1px solid rgba(100, 255, 218, 0.15);
+  border: 1px solid var(--ai-badge-border);
 }
 .ai-badge::before {
   content: '';
@@ -116,7 +116,7 @@ function goChat() {
 }
 .ai-btn:hover {
   transform: translateY(-3px) scale(1.03);
-  box-shadow: 0 10px 32px rgba(100, 255, 218, 0.35);
+  box-shadow: 0 10px 32px var(--ai-btn-shadow-hover);
 }
 .ai-btn svg {
   width: 18px;

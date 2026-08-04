@@ -128,8 +128,8 @@ function ask(q: string) {
 }
 .cf-back:hover {
   color: var(--accent-strong);
-  background: rgba(100, 255, 218, 0.06);
-  border-color: rgba(100, 255, 218, 0.15);
+  background: var(--back-btn-hover-bg);
+  border-color: var(--back-btn-hover-border);
   transform: translateX(-2px);
 }
 .cf-title-group {
@@ -228,9 +228,9 @@ function ask(q: string) {
 }
 .chip {
   font-family: var(--font-mono);
-  border: 1px solid rgba(100, 255, 218, 0.16);
+  border: 1px solid var(--chip-border);
   border-radius: var(--radius-pill);
-  background: rgba(100, 255, 218, 0.06);
+  background: var(--chip-bg);
   color: var(--accent-strong);
   font-size: 0.75rem;
   padding: 0.45rem 0.95rem;
@@ -238,8 +238,8 @@ function ask(q: string) {
   transition: color 0.2s, border-color 0.2s, background 0.2s, transform 0.2s;
 }
 .chip:hover:not(:disabled) {
-  border-color: rgba(100, 255, 218, 0.35);
-  background: rgba(100, 255, 218, 0.14);
+  border-color: var(--chip-border-hover);
+  background: var(--chip-bg-hover);
   transform: translateY(-2px);
 }
 .chip:disabled {

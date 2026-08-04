@@ -51,7 +51,7 @@ import { experiences } from '@/data/profile'
   left: 0;
   right: 0;
   height: 1px;
-  background: linear-gradient(90deg, rgba(136, 146, 176, 0.08), transparent 70%);
+  background: linear-gradient(90deg, var(--border-subtle), transparent 70%);
 }
 .exp-item:last-child::after { display: none; }
 .exp-year {

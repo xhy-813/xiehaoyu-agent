@@ -37,7 +37,7 @@ import { profile, skillsFlat } from '@/data/profile'
 .skills-section {
   margin-top: 2.25rem;
   padding-top: 1.75rem;
-  border-top: 1px solid rgba(136, 146, 176, 0.1);
+  border-top: 1px solid var(--border-subtle);
 }
 .skills-title {
   font-family: var(--font-mono);

@@ -87,11 +87,7 @@ watch(
 /* 输入区：粘性底部 + 毛玻璃，与消息区有层次感 */
 .input-area {
   padding: 0.75rem 1.5rem 1.25rem;
-  background: linear-gradient(
-    0deg,
-    rgba(10, 25, 47, 0.98) 60%,
-    rgba(10, 25, 47, 0.0) 100%
-  );
+  background: var(--chat-footer-bg);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
 }
@@ -101,12 +97,4 @@ watch(
   .input-area { padding: 0.5rem 0.75rem 0.75rem; }
 }
 
-/* ── 浅色模式覆盖 ─────────────────────────────────────── */
-:global([data-theme="light"]) .input-area {
-  background: linear-gradient(
-    0deg,
-    rgba(246, 248, 250, 0.99) 60%,
-    rgba(246, 248, 250, 0.0) 100%
-  );
-}
 </style>

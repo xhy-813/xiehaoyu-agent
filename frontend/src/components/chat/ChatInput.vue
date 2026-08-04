@@ -94,17 +94,17 @@ watch(() => props.streaming, (now) => {
   display: flex;
   align-items: flex-end;
   gap: 0.5rem;
-  background: rgba(17, 34, 64, 0.85);
+  background: var(--input-container-bg);
   border: 1px solid var(--border);
   border-radius: 28px;
   box-shadow: 0 4px 24px rgba(0, 0, 0, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.04);
   padding: 0.4rem 0.5rem 0.4rem 1.2rem;
-  transition: border-color 0.25s, box-shadow 0.25s;
+  transition: border-color 0.25s, box-shadow 0.25s, background 0.25s;
 }
 .input-container:focus-within {
-  border-color: rgba(100, 255, 218, 0.45);
-  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.25), 0 0 0 3px rgba(100, 255, 218, 0.06), inset 0 1px 0 rgba(255, 255, 255, 0.04);
-  background: rgba(17, 34, 64, 0.95);
+  border-color: var(--input-focus-border);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.15), 0 0 0 3px var(--input-focus-ring), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  background: var(--input-container-bg-focus);
 }
 .input-container :deep(.n-input) {
   flex: 1;
@@ -124,7 +124,7 @@ watch(() => props.streaming, (now) => {
   transition: background 0.2s ease;
 }
 .send-btn:hover:not(:disabled) { background: var(--accent-strong-hover) !important; }
-.send-btn:disabled { background: #3a4a63 !important; }
+.send-btn:disabled { background: var(--input-disabled-btn) !important; }
 .char-count {
   font-size: 0.7rem;
   color: var(--text-3);
@@ -143,19 +143,4 @@ watch(() => props.streaming, (now) => {
   margin: 0.4rem 0 0;
 }
 
-/* ── 浅色模式覆盖 ─────────────────────────────────────── */
-:global([data-theme="light"]) .input-container {
-  background: rgba(255, 255, 255, 0.9);
-  box-shadow: 0 1px 3px rgba(31, 35, 40, 0.12), 0 4px 16px rgba(31, 35, 40, 0.08),
-              inset 0 1px 0 rgba(255, 255, 255, 0.8);
-}
-:global([data-theme="light"]) .input-container:focus-within {
-  border-color: rgba(9, 105, 218, 0.5);
-  background: #ffffff;
-  box-shadow: 0 1px 3px rgba(31, 35, 40, 0.12), 0 4px 16px rgba(31, 35, 40, 0.08),
-              0 0 0 3px rgba(9, 105, 218, 0.08);
-}
-:global([data-theme="light"]) .send-btn:disabled {
-  background: #d0d7de !important;
-}
 </style>

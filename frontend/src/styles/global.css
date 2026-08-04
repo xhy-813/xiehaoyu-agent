@@ -9,6 +9,18 @@
   --bg-card-lighter: #1d3461;
   --bg-bubble-user: #112240;
   --bg-subtle: rgba(100, 255, 218, 0.04);        /* 卡片头/表头浅底 */
+  /* 交互状态 */
+  --bg-hover-card: rgba(17, 34, 64, 0.6);        /* 经历/项目卡片 hover 背景 */
+  --bg-hover-shadow: 0 4px 24px rgba(0, 0, 0, 0.2); /* 卡片 hover 阴影 */
+  --chat-bar-bg: linear-gradient(180deg, rgba(10,25,47,0.96) 0%, rgba(17,34,64,0.92) 100%);
+  --chat-bar-border: rgba(100, 255, 218, 0.1);
+  --chat-bar-shadow: 0 1px 0 rgba(100,255,218,0.06), 0 4px 24px rgba(0,0,0,0.2);
+  --chat-footer-bg: linear-gradient(0deg, rgba(10,25,47,0.98) 60%, rgba(10,25,47,0) 100%);
+  --input-container-bg: rgba(17, 34, 64, 0.85);
+  --input-container-bg-focus: rgba(17, 34, 64, 0.95);
+  --input-focus-border: rgba(100, 255, 218, 0.45);
+  --input-focus-ring: rgba(100, 255, 218, 0.06);
+  --input-disabled-btn: #3a4a63;
   /* 品牌 */
   --accent: #64ffda;
   --accent-strong: #64ffda;                       /* 工作色：链接/强调/焦点/流光 */
@@ -247,6 +259,18 @@ pre code.hljs {
   --bg-card-lighter: #eef1f6;
   --bg-bubble-user: #dbeafe;
   --bg-subtle: rgba(9, 105, 218, 0.04);
+  /* 交互状态 */
+  --bg-hover-card: rgba(9, 105, 218, 0.04);
+  --bg-hover-shadow: 0 2px 16px rgba(31, 35, 40, 0.1);
+  --chat-bar-bg: linear-gradient(180deg, rgba(246,248,250,0.97) 0%, rgba(255,255,255,0.94) 100%);
+  --chat-bar-border: rgba(9, 105, 218, 0.12);
+  --chat-bar-shadow: 0 1px 0 rgba(9,105,218,0.08), 0 4px 24px rgba(31,35,40,0.08);
+  --chat-footer-bg: linear-gradient(0deg, rgba(246,248,250,0.99) 60%, rgba(246,248,250,0) 100%);
+  --input-container-bg: rgba(255, 255, 255, 0.9);
+  --input-container-bg-focus: #ffffff;
+  --input-focus-border: rgba(9, 105, 218, 0.5);
+  --input-focus-ring: rgba(9, 105, 218, 0.08);
+  --input-disabled-btn: #d0d7de;
   /* 品牌（GitHub 深蓝） */
   --accent: #0969da;
   --accent-strong: #0969da;

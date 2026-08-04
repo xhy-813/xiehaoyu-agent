@@ -37,8 +37,8 @@ import { experiences } from '@/data/profile'
   transition: background-color 0.25s ease, box-shadow 0.25s ease, opacity 0.3s ease;
 }
 .exp-item:hover {
-  background-color: rgba(17, 34, 64, 0.6);
-  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.2);
+  background-color: var(--bg-hover-card);
+  box-shadow: var(--bg-hover-shadow);
 }
 /* v5 签名：group-hover dim */
 .exp-list:hover .exp-item { opacity: 0.5; }
@@ -99,15 +99,4 @@ import { experiences } from '@/data/profile'
   .exp-year { width: auto; }
 }
 
-/* ── 浅色模式覆盖 ─────────────────────────────────────── */
-:global([data-theme="light"]) .exp-item:hover {
-  background-color: rgba(9, 105, 218, 0.04);
-  box-shadow: 0 2px 16px rgba(31, 35, 40, 0.1);
-}
-:global([data-theme="light"]) .exp-list:hover .exp-item {
-  opacity: 0.55;
-}
-:global([data-theme="light"]) .exp-list:hover .exp-item:hover {
-  opacity: 1;
-}
 </style>

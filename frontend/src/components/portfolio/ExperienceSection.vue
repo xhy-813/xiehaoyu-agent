@@ -6,8 +6,8 @@
         <span class="exp-year">{{ e.period }}</span>
         <div class="exp-detail">
           <div class="exp-role-line">
-            <span class="exp-role">{{ e.role }} ·</span>
             <span class="exp-company">{{ e.company }}</span>
+            <span class="exp-role">· {{ e.role }}</span>
           </div>
           <p class="exp-desc">{{ e.desc }}</p>
           <div class="exp-tags">

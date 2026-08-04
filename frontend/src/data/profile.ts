@@ -101,14 +101,14 @@ export const experiences: Experience[] = [
   {
     company: '龙腾出行',
     role: '数据实习生',
-    period: '2026.04 — 至今',
+    period: '2026.04 — 2026.08',
     desc: '基于 DataPipeline 分层架构打通多源 API 采集清洗入库全链路，覆盖国内外十万余条数据；设计四层数据完整性评估脚本并搭建 FineBI 实时看板；对 POI 匹配失败案例做聚类归因，定位根因后准确率提升 62%；基于千问大模型搭建「生成→验证→重生成」AI 清洗流程。',
     tags: ['Python', 'DataPipeline', 'FineBI', '归因分析', '千问大模型'],
   },
   {
     company: '吉首大学',
     role: '本科在读',
-    period: '2024.09 — 至今',
+    period: '2023.09 — 2027.06',
     desc: '数据科学与大数据技术专业，专业排名前 5%。核心课程涵盖数据结构、数据库原理、机器学习、分布式计算（Hadoop / Spark）、数据可视化等。参与数学建模、数据分析、Kaggle 竞赛，多次获得校级和省级奖项。',
     tags: ['Hadoop', 'Spark', '机器学习', '数学建模'],
   },

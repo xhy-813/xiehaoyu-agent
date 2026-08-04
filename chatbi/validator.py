@@ -31,7 +31,8 @@ _COMMENT_RE = re.compile(
 
 # Regex to strip single-quoted string literals so the forbidden-keyword
 # check doesn't false-positive on e.g. ``SELECT 'INSERT' AS action_type``
-_STRING_LITERAL_RE = re.compile(r"'[^']*'")
+# Match single-quoted string literals, including SQL '' escape sequences
+_STRING_LITERAL_RE = re.compile(r"'[^']*(?:''[^']*)*'")
 
 
 class SQLValidationError(ValueError):

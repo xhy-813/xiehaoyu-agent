@@ -89,8 +89,9 @@ def render_chat() -> None:
             try:
                 result = run(prompt)
             except Exception as e:  # noqa: BLE001
+                logger.exception("Agent execution failed for: %s", prompt[:200])
                 err_msg = (
-                    f"执行失败：{e}\n\n"
+                    "抱歉，处理您的请求时遇到了问题。\n\n"
                     "你可以换一种问法重试，或先用简短问题验证（例如：2018 年每月订单数）。"
                 )
                 st.error(err_msg)

@@ -51,6 +51,8 @@ def _sanitize_input(text: str) -> str:
     """
     # Strip markdown code fences that could be used to escape the prompt
     cleaned = re.sub(r"```[\s\S]*?```", "[code block removed]", text)
+    # Strip any remaining unclosed triple-backtick markers
+    cleaned = re.sub(r"```", "[code block removed]", cleaned)
     cleaned = re.sub(r"`{1,2}[^`]*`{1,2}", "[inline code removed]", cleaned)
 
     for pattern in _INJECTION_PATTERNS:

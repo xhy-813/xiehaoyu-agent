@@ -32,9 +32,8 @@ def get_embedding_function():
       sentence-transformers (~1.3 GB RAM).
     """
     import os
-    from dotenv import load_dotenv
 
-    load_dotenv()  # ensure .env is loaded before reading EMBED_API_KEY
+    # .env is loaded by configs.settings at import time — no need to reload
     api_key = os.getenv("EMBED_API_KEY", "")
     if api_key:
         return _ZhipuEmbeddingFunction(

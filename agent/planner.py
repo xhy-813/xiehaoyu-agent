@@ -13,6 +13,7 @@ from pathlib import Path
 from openai import OpenAI
 
 from agent.llm_client import get_client
+from agent.tools.introduce_me import _sanitize_input
 from configs.settings import settings
 
 
@@ -68,6 +69,9 @@ def plan(question: str, trace: list[dict], client: OpenAI | None = None) -> dict
         {"action": "finalize", "answer": str}
     """
     client = client or get_client()
+
+    # Sanitize user input to prevent prompt injection
+    question = _sanitize_input(question)
 
     # Build trace context
     if trace:

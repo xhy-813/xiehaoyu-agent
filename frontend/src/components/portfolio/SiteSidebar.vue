@@ -81,7 +81,8 @@ async function copyWechat() {
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  padding: 10vh 40px 6vh 10vw;
+  /* clamp 防止超宽屏时左边距失控；右侧固定 40px 与右列内容呼应 */
+  padding: 10vh 40px 6vh clamp(2rem, 10vw, 80px);
   z-index: 50;
   overflow-y: auto;
   scrollbar-width: none;
@@ -211,7 +212,7 @@ async function copyWechat() {
 
 /* ≤1200px：左栏收窄 */
 @media (max-width: 1200px) {
-  .site-sidebar { width: 38%; padding-left: 6vw; }
+  .site-sidebar { width: 38%; padding-left: clamp(1.5rem, 6vw, 56px); }
 }
 
 /* ≤980px：顶部静态身份块 + 横向导航行 */

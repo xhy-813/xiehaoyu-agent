@@ -1,6 +1,5 @@
 <template>
   <div class="chat-fullscreen">
-    <MouseSpotlight />
     <header class="cf-bar">
       <div class="cf-left">
         <button class="cf-back" aria-label="返回作品集" @click="goBack">
@@ -60,7 +59,6 @@
 import { useRouter } from 'vue-router'
 import ChatWidget from '@/components/chat/ChatWidget.vue'
 import AnimatedAvatar from '@/components/shared/AnimatedAvatar.vue'
-import MouseSpotlight from '@/components/portfolio/MouseSpotlight.vue'
 import { useChatStore } from '@/stores/chat'
 import { useEscapeKey } from '@/composables/useMediaQuery'
 import { WELCOME_QUESTIONS } from '@/utils/quick-questions'

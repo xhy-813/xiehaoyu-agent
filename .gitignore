@@ -34,6 +34,8 @@ Xiehaoyu-Agent/archive.zip
 
 # 个人知识库（内部另有 .git，不纳入本仓，仅作为 RAG 语料源）
 Xiehaoyu-Agent/个人知识库/
+# 项目skills
+.comate/
 
 # OS
 .DS_Store

@@ -17,9 +17,8 @@ from functools import lru_cache
 from pathlib import Path
 
 import chromadb
-from chromadb.utils import embedding_functions
 
-from rag.constants import COLLECTION, EMBED_MODEL
+from rag.constants import COLLECTION, get_embedding_function
 
 logger = logging.getLogger(__name__)
 
@@ -69,7 +68,7 @@ def _get_collection(db_path: str):
     Cached per *db_path* — calling ``invalidate_cache()`` clears it.
     """
     client = chromadb.PersistentClient(path=db_path)
-    ef = embedding_functions.SentenceTransformerEmbeddingFunction(model_name=EMBED_MODEL)
+    ef = get_embedding_function()
     return client.get_collection(COLLECTION, embedding_function=ef)
 
 

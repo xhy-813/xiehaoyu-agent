@@ -23,13 +23,6 @@ import sys
 from pathlib import Path
 
 import chromadb
-from chromadb.utils import embedding_functions
-
-
-# Prevent sentence-transformers from calling HuggingFace Hub
-# (model is already cached locally)
-os.environ.setdefault("HF_HUB_OFFLINE", "1")
-os.environ.setdefault("TRANSFORMERS_OFFLINE", "1")
 
 logger = logging.getLogger(__name__)
 
@@ -38,7 +31,7 @@ logger = logging.getLogger(__name__)
 INCLUDE_DIRS = {"简历", "自我介绍", "常见问题", "项目", "工作经历"}
 EXCLUDE_DIRS = {"secrets", ".git", ".agents", ".claude", ".codex", ".workbuddy"}
 
-from rag.constants import COLLECTION, EMBED_MODEL  # noqa: E402
+from rag.constants import COLLECTION, get_embedding_function  # noqa: E402
 
 MAX_CHARS = 800
 OVERLAP = 80
@@ -191,7 +184,7 @@ def build(src: Path, db: Path) -> int:
 
     db.mkdir(parents=True, exist_ok=True)
     client = chromadb.PersistentClient(path=str(db))
-    ef = embedding_functions.SentenceTransformerEmbeddingFunction(model_name=EMBED_MODEL)
+    ef = get_embedding_function()
 
     # ── Chunk all files ──
     all_chunks: list[dict] = []

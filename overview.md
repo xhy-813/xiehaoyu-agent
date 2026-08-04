@@ -18,7 +18,7 @@
 | LLM | DeepSeek Chat API (`deepseek-v4-flash`) | 中文效果好、便宜、有免费额度；可切千问 |
 | Agent 编排 | LangGraph 1.2.9+ | 状态机式，简历含金量高；支持 `astream()` 流式 |
 | 后端 | FastAPI + Uvicorn | 原生 async，SSE 流式推送，按 IP 限流 |
-| 前端 | Vue 3 + TypeScript + Vite + Naive UI | 暗色主题，SSE 实时接收，Plotly 图表渲染 |
+| 前端 | Vue 3 + TypeScript + Vite + Naive UI | 深/浅色主题切换（CSS 变量驱动），SSE 实时接收，Plotly 图表渲染 |
 | RAG 向量库 | ChromaDB（本地持久化） | 零成本，cosine 距离 |
 | Embedding | BAAI/bge-large-zh-v1.5 | 通过 sentence-transformers 本地运行 |
 | 数据仓库 | SQLite（本地 .db 文件） | 部署简单，够 demo |
@@ -186,6 +186,11 @@ START → planner → tool_router → introduce_me/query_data/visualize/explain_
 - 2026-07-24：Day 7-8 完成（Vue 3 + FastAPI 重构 + 代码审查）
 - 2026-07-25：Day 9 完成（部署配置 + 品牌形象 + 项目审查）
 - MVP 目标：已达成
+- 2026-07-27：知识库改造 v1：重构为求职导向的 5 分类 21 文件 + 向量库重建
+- 2026-07-28：Prompt 优化：提取 planner/introduce_me 到文件 + text2sql/explain 增强 + RAG 代码重构
+- 2026-07-29：前端深浅色主题系统（CSS 变量体系 + useTheme + Naive UI 动态切换）
+- 2026-07-29：MouseSpotlight 重写（background-attachment:fixed，滚动时光斑正确跟随）
+- 2026-07-29：前端组件主题适配，消除全部硬编码颜色，SectionHeading 移动端响应式
 - 迭代计划：秋招前（2026-09）持续打磨
 
 ## 相关资源

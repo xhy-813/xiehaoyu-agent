@@ -14,7 +14,7 @@
 | **LLM**        | DeepSeek Chat API (`deepseek-v4-flash`)         | 中文效果好、有免费额度                  |
 | **Agent 编排** | LangGraph 1.2.9+                                  | 状态机式，支持`astream()` 流式推送    |
 | **后端**       | FastAPI + Uvicorn                                 | 原生 async，SSE 流式推送，按 IP 限流    |
-| **前端**       | Vue 3 + TypeScript + Vite + Naive UI              | 暗色主题，SSE 实时接收，Plotly 图表渲染 |
+| **前端**       | Vue 3 + TypeScript + Vite + Naive UI              | 深/浅色主题切换（CSS 变量驱动），SSE 实时接收，Plotly 图表渲染 |
 | **RAG 向量库** | ChromaDB（本地持久化）                            | 零成本，cosine 距离                     |
 | **Embedding**  | BAAI/bge-large-zh-v1.5                            | 通过 sentence-transformers 本地运行     |
 | **数据仓库**   | SQLite（本地 .db 文件）                           | 部署简单                                |
@@ -27,7 +27,7 @@
 ## 架构
 
 ```
-用户浏览器 (Vue 3 + Naive UI 暗色主题)
+用户浏览器 (Vue 3 + Naive UI 深/浅色主题切换)
     │
     │ POST /api/chat (SSE 流式)
     ▼
@@ -127,7 +127,10 @@ xiehaoyu-agent/
 │       │   ├── markdown.ts         # Markdown 渲染（markdown-it + highlight.js）
 │       │   └── tool-constants.ts   # Tool 中文标签、颜色、图表类型映射
 │       ├── composables/
-│       │   └── useAvatarState.ts   # 动画状态组合式函数
+│       │   ├── useAvatarState.ts   # 动画状态组合式函数
+│       │   ├── useTheme.ts         # 深/浅色主题切换（localStorage 持久化）
+│       │   ├── useScrollSpy.ts     # 滚动锚点高亮跟随
+│       │   └── useRevealOnScroll.ts # 滚动出现动画指令
 │       ├── styles/
 │       │   └── global.css          # 全局样式（暗色主题、滚动条、动画）
 │       ├── views/
@@ -142,7 +145,7 @@ xiehaoyu-agent/
 │           │   ├── ChatSection.vue     # AI 问答 Banner（直达 /chat）
 │           │   ├── SiteFooter.vue      # 页脚
 │           │   ├── SectionHeading.vue  # 区块标题
-│           │   └── MouseSpotlight.vue  # 鼠标光斑
+│           │   ├── MouseSpotlight.vue  # 鼠标流光（radial-gradient 背景层，background-attachment:fixed）
 │           └── chat/
 │               ├── ChatWidget.vue      # 聊天组件（消息列表 + 输入框）
 │               ├── ChatMessage.vue     # 消息气泡（Markdown 渲染 + 内联结果展示）
@@ -298,8 +301,10 @@ xiehaoyu-agent/
 
 ### 主题
 
-- 暗色主题（CSS 变量驱动）
-- 主色调：`#63e2b7`（青绿色）
+- 深色主题（默认）/ 浅色主题（GitHub 纯净白风格）—— 左栏底部按钮一键切换
+- CSS 变量驱动，全站组件自动响应；Naive UI 同步切换 `darkTheme` / `lightTheme`
+- 深色主色调：`#64ffda`（青绿色）；浅色主色调：`#0969da`（GitHub 蓝）
+- MouseSpotlight 流光效果：radial-gradient 写入页面背景层（`background-attachment: fixed`），滚动时正确跟随鼠标
 
 ## API 文档
 
@@ -426,6 +431,9 @@ pytest tests/ -v
 | 2026-07-25 | MVP 达成 ✓                               |
 | 2026-07-27 | 知识库改造 v1: 重构为求职导向的 5 分类 21 文件 + 向量库重建 |
 | 2026-07-28 | Prompt 优化: 提取 planner/introduce_me 到文件 + text2sql/explain 增强 + RAG 代码重构 |
+| 2026-07-29 | 前端深浅色主题系统：CSS 变量体系 + useTheme composable + Naive UI 动态切换 |
+| 2026-07-29 | MouseSpotlight 重写：background-attachment:fixed 方案，滚动时光斑正确跟随 |
+| 2026-07-29 | 前端组件主题适配：消除全部硬编码颜色，SectionHeading 移动端响应式可见 |
 
 ## 后续迭代
 

@@ -352,6 +352,7 @@ onMounted(() => {
   background: var(--bg-card);
   border-radius: 10px;
   overflow: hidden;
+  box-shadow: var(--result-card-shadow);
 }
 .ir-section {
   border-bottom: 1px solid var(--border);
@@ -365,8 +366,12 @@ onMounted(() => {
   background: var(--bg-subtle);
 }
 .ir-table-wrap {  }
-.ir-chart-wrap { padding: 0.5rem; }
+.ir-chart-wrap { padding: 0.5rem; min-height: 300px; }
 .ir-chart-inner { min-height: 300px; }
+
+.ir-section :deep(.n-collapse-item__content-wrapper) {
+  transition: max-height 0.3s ease, opacity 0.3s ease;
+}
 
 /* Inline trace timeline */
 .ir-trace { padding: 0.5rem 0.8rem; }

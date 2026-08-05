@@ -11,6 +11,17 @@
           :is-streaming="chat.isStreaming && msg === chat.messages[chat.messages.length - 1] && msg.role === 'assistant'"
         />
       </div>
+
+      <button
+        v-if="showScrollButton"
+        class="scroll-to-bottom"
+        aria-label="回到底部"
+        @click="scrollToBottom"
+      >
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="6 9 12 15 18 9"/>
+        </svg>
+      </button>
     </div>
 
     <!-- Input area -->
@@ -26,7 +37,7 @@
 </template>
 
 <script setup lang="ts">
-import { watch, nextTick, ref } from 'vue'
+import { watch, nextTick, ref, onMounted, onBeforeUnmount } from 'vue'
 import ChatMessage from './ChatMessage.vue'
 import ChatInput from './ChatInput.vue'
 import { useChatStore } from '@/stores/chat'
@@ -66,6 +77,27 @@ watch(
   },
   () => nextTick(scrollToBottomIfNear)
 )
+
+const showScrollButton = ref(false)
+
+function onScroll() {
+  const el = messagesRef.value
+  if (!el) return
+  showScrollButton.value = el.scrollHeight - el.scrollTop - el.clientHeight > 200
+}
+
+function scrollToBottom() {
+  const el = messagesRef.value
+  if (!el) return
+  el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' })
+}
+
+onMounted(() => {
+  messagesRef.value?.addEventListener('scroll', onScroll, { passive: true })
+})
+onBeforeUnmount(() => {
+  messagesRef.value?.removeEventListener('scroll', onScroll)
+})
 </script>
 
 <style scoped>
@@ -83,6 +115,30 @@ watch(
 .messages-list {
   max-width: 768px;
   margin: 0 auto;
+}
+.scroll-to-bottom {
+  position: sticky;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  margin: 0 auto;
+  border: 1px solid var(--scroll-to-bottom-border);
+  border-radius: 50%;
+  background: var(--scroll-to-bottom-bg);
+  color: var(--accent-strong);
+  cursor: pointer;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  animation: fadeIn 0.2s ease-out;
+  transition: border-color 0.2s, transform 0.2s;
+  z-index: 10;
+}
+.scroll-to-bottom:hover {
+  border-color: var(--scroll-to-bottom-hover-border);
+  transform: translateY(-2px);
 }
 /* 输入区：粘性底部 + 毛玻璃，与消息区有层次感 */
 .input-area {

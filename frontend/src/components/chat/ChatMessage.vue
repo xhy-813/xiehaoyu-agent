@@ -374,6 +374,19 @@ onMounted(() => {
   cursor: pointer; transition: background 0.2s, color 0.2s;
 }
 .action-btn:hover { background: rgba(255, 255, 255, 0.06); color: var(--text-1); }
+.action-btn.retry-btn {
+  color: var(--accent-strong);
+  border: 1px solid var(--accent-border);
+  background: rgba(100, 255, 218, 0.06);
+  gap: 0.3rem;
+  padding: 0 0.6rem;
+  width: auto;
+  border-radius: 6px;
+}
+.action-btn.retry-btn:hover {
+  background: rgba(100, 255, 218, 0.12);
+  border-color: var(--accent-strong);
+}
 
 .msg-stopped-hint {
   display: flex;

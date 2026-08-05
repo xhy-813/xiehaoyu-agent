@@ -3,7 +3,7 @@
     class="chat-message"
     :class="[
       message.role,
-      { 'chat-message-enter': animate, 'chat-message-consecutive': isConsecutive }
+      { 'chat-message-enter': animate && !isFirstAssistantMessage, 'chat-message-enter-first': animate && isFirstAssistantMessage, 'chat-message-consecutive': isConsecutive }
     ]"
   >
     <!-- Avatar -->
@@ -27,7 +27,7 @@
 
       <!-- Text content -->
       <div v-if="message.content" class="msg-bubble" :class="{ 'msg-bubble-error': isError }">
-        <div class="msg-content" :class="{ 'streaming-cursor': isStreaming }" v-html="renderedContent" />
+        <div class="msg-content" :class="{ 'streaming-cursor': isStreaming || cursorFading, 'fade-out': cursorFading }" v-html="renderedContent" />
       </div>
       <div v-else class="msg-loading">
         <div class="loading-row">
@@ -141,7 +141,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, onMounted } from 'vue'
+import { computed, ref, onMounted, watch } from 'vue'
 import { useMessage } from 'naive-ui'
 import ChartRenderer from '@/components/result/ChartRenderer.vue'
 import AnimatedAvatar from '@/components/shared/AnimatedAvatar.vue'
@@ -163,6 +163,21 @@ const isConsecutive = computed(() => {
   const idx = chat.messages.indexOf(props.message as ChatMessage)
   if (idx <= 0) return false
   return chat.messages[idx - 1].role === props.message.role
+})
+
+const isFirstAssistantMessage = computed(() => {
+  const idx = chat.messages.indexOf(props.message as ChatMessage)
+  return idx === 0 || (props.message.role === 'assistant' &&
+    chat.messages.slice(0, idx).every(m => m.role !== 'assistant'))
+})
+
+const cursorFading = ref(false)
+
+watch(() => props.isStreaming, (now, prev) => {
+  if (prev && !now) {
+    cursorFading.value = true
+    setTimeout(() => { cursorFading.value = false }, 300)
+  }
 })
 
 const isLastAssistant = computed(() =>
@@ -334,6 +349,12 @@ onMounted(() => {
   opacity: 0;
   transition: opacity 0.2s;
 }
+.chat-message-enter-first {
+  animation: fadeInUp 0.4s ease-out;
+}
+.chat-message-enter {
+  animation: fadeIn 0.2s ease-out;
+}
 .chat-message:hover .msg-actions { opacity: 1; }
 @media (hover: none) { .msg-actions { opacity: 1; } }
 .action-btn {
@@ -375,7 +396,7 @@ onMounted(() => {
 
 /* Inline trace timeline */
 .ir-trace { padding: 0.5rem 0.8rem; }
-.irt-step { display: flex; gap: 0.5rem; }
+.irt-step { display: flex; gap: 0.5rem; animation: fadeIn 0.25s ease-out; }
 .irt-line { display: flex; flex-direction: column; align-items: center; width: 12px; flex-shrink: 0; }
 .irt-dot { width: 8px; height: 8px; border-radius: 50%; margin-top: 5px; }
 .irt-connector { width: 1px; flex: 1; background: var(--border); margin: 3px 0; }

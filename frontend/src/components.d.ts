@@ -19,6 +19,8 @@ declare module 'vue' {
     ChatSection: typeof import('./components/portfolio/ChatSection.vue')['default']
     ChatWidget: typeof import('./components/chat/ChatWidget.vue')['default']
     ExperienceSection: typeof import('./components/portfolio/ExperienceSection.vue')['default']
+    InlineResult: typeof import('./components/chat/InlineResult.vue')['default']
+    MessageBubble: typeof import('./components/chat/MessageBubble.vue')['default']
     MouseSpotlight: typeof import('./components/portfolio/MouseSpotlight.vue')['default']
     NAvatar: typeof import('naive-ui')['NAvatar']
     NButton: typeof import('naive-ui')['NButton']
@@ -38,5 +40,6 @@ declare module 'vue' {
     SectionHeading: typeof import('./components/portfolio/SectionHeading.vue')['default']
     SiteFooter: typeof import('./components/portfolio/SiteFooter.vue')['default']
     SiteSidebar: typeof import('./components/portfolio/SiteSidebar.vue')['default']
+    WelcomeScreen: typeof import('./components/chat/WelcomeScreen.vue')['default']
   }
 }

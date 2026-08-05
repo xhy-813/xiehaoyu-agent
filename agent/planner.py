@@ -8,6 +8,7 @@
 from __future__ import annotations
 
 import json
+import logging
 from pathlib import Path
 
 from openai import OpenAI
@@ -16,6 +17,7 @@ from agent.llm_client import get_client
 from agent.sanitize import sanitize_input
 from configs.settings import settings
 
+logger = logging.getLogger(__name__)
 
 PLANNER_PROMPT_PATH = Path(__file__).resolve().parents[1] / "prompts" / "planner.md"
 
@@ -38,6 +40,9 @@ def _extract_json(raw: str) -> dict:
     a non-greedy regex, which would truncate on the first ``}``.
     """
     raw = raw.strip()
+    if not raw:
+        raise ValueError("LLM returned empty response")
+
     # Strip markdown code block wrapper
     if raw.startswith("```"):
         lines = raw.split("\n")
@@ -49,7 +54,7 @@ def _extract_json(raw: str) -> dict:
         # Fallback: find the outermost {...} using brace counting
         start = raw.find("{")
         if start == -1:
-            raise ValueError(f"Planner output is not valid JSON: {raw}")
+            raise ValueError(f"Planner output is not valid JSON: {raw[:200]}")
         depth = 0
         for i in range(start, len(raw)):
             if raw[i] == "{":
@@ -58,7 +63,7 @@ def _extract_json(raw: str) -> dict:
                 depth -= 1
                 if depth == 0:
                     return json.loads(raw[start : i + 1])
-        raise ValueError(f"Planner JSON has unmatched braces: {raw}")
+        raise ValueError(f"Planner JSON has unmatched braces: {raw[:200]}")
 
 
 def plan(question: str, trace: list[dict], client: OpenAI | None = None) -> dict:
@@ -97,4 +102,27 @@ def plan(question: str, trace: list[dict], client: OpenAI | None = None) -> dict
         temperature=settings.planner_temperature,
     )
     raw = resp.choices[0].message.content or ""
+
+    # Guard against empty LLM response (e.g. API filter, model refusal)
+    if not raw.strip():
+        logger.warning(
+            "Planner LLM returned empty response. "
+            "finish_reason=%s",
+            resp.choices[0].finish_reason,
+        )
+        # Fallback: if this is the first step and the question looks like
+        # a self-intro, route to introduce_me; otherwise finalize safely
+        if not trace:
+            intro_keywords = ["介绍", "你是谁", "你叫什么", "认识你", "你的背景"]
+            if any(kw in question for kw in intro_keywords):
+                return {
+                    "action": "call",
+                    "tool": "introduce_me",
+                    "args": {"question": question},
+                }
+        return {
+            "action": "finalize",
+            "answer": "抱歉，我暂时无法处理这个请求，请稍后再试。",
+        }
+
     return _extract_json(raw)

@@ -63,6 +63,15 @@
         </div>
       </div>
 
+      <!-- Stopped hint -->
+      <div v-if="wasStopped && message.content" class="msg-stopped-hint">
+        已停止生成
+        <button class="action-btn retry-btn" @click="retry">
+          <n-icon size="14"><svg viewBox="0 0 24 24"><path fill="currentColor" d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg></n-icon>
+          重试
+        </button>
+      </div>
+
       <!-- Message actions (assistant, non-streaming): copy / retry / step tags -->
       <div v-if="message.role === 'assistant' && !isStreaming && message.content" class="msg-actions">
         <button class="action-btn" aria-label="复制内容" title="复制" @click="copyContent">
@@ -152,7 +161,7 @@ import { findDataArtifact, findChartArtifact } from '@/utils/artifact'
 import { renderMarkdown } from '@/utils/markdown'
 import type { AvatarState } from '@/components/shared/AnimatedAvatar.vue'
 
-const props = defineProps<{ message: ChatMessage; isStreaming?: boolean }>()
+const props = defineProps<{ message: ChatMessage; isStreaming?: boolean; wasStopped?: boolean }>()
 
 const chat = useChatStore()
 
@@ -365,6 +374,22 @@ onMounted(() => {
   cursor: pointer; transition: background 0.2s, color 0.2s;
 }
 .action-btn:hover { background: rgba(255, 255, 255, 0.06); color: var(--text-1); }
+
+.msg-stopped-hint {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+  font-size: 0.78rem;
+  color: var(--text-3);
+}
+.retry-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  color: var(--accent-strong);
+  font-size: 0.78rem;
+}
 
 /* Inline result */
 .inline-result {

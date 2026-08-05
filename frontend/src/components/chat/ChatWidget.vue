@@ -9,6 +9,7 @@
           :key="msg.id"
           :message="msg"
           :is-streaming="chat.isStreaming && msg === chat.messages[chat.messages.length - 1] && msg.role === 'assistant'"
+          :was-stopped="chat.wasStopped && msg === chat.messages[chat.messages.length - 1] && msg.role === 'assistant'"
         />
       </div>
 

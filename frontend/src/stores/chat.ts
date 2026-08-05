@@ -28,6 +28,7 @@ export const useChatStore = defineStore('chat', () => {
   const streamError = ref<string | null>(null)
   const abortController = ref<AbortController | null>(null)
   const currentTool = ref<string | null>(null)  // 流式期间正在执行的工具名
+  const wasStopped = ref(false)
 
   // ── Avatar state ──────────────────────────────────────────────────────────
 
@@ -87,6 +88,8 @@ export const useChatStore = defineStore('chat', () => {
 
   async function sendMessage(question: string) {
     if (isStreaming.value) return
+
+    wasStopped.value = false
 
     // Abort any existing stream
     if (abortController.value) {
@@ -168,6 +171,7 @@ export const useChatStore = defineStore('chat', () => {
 
   function stopStreaming() {
     abortController.value?.abort()
+    wasStopped.value = true
   }
 
   function clearChat() {
@@ -187,6 +191,7 @@ export const useChatStore = defineStore('chat', () => {
     currentTool,
     avatarState,
     hasData,
+    wasStopped,
     sendMessage,
     stopStreaming,
     clearChat,

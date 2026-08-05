@@ -28,8 +28,30 @@ from configs.settings import settings
 PROMPT_PATH = Path(__file__).resolve().parents[2] / "prompts" / "text2sql.md"
 DB_PATH = Path(__file__).resolve().parents[2] / "chatbi" / "data" / "olist.db"
 
-# Module-level prompt template cache
+# Module-level prompt cache
 _PROMPT_TEMPLATE: str | None = None
+_SYSTEM_ROLE: str | None = None
+
+
+def _load_prompt() -> tuple[str, str]:
+    """Parse text2sql.md into (system_role, user_template).
+
+    The prompt file uses 【系统角色】 and 【安全规则】 section headers.
+    Everything from 【安全规则】 onward is the user template.
+    """
+    global _PROMPT_TEMPLATE, _SYSTEM_ROLE
+    if _PROMPT_TEMPLATE is None:
+        raw = PROMPT_PATH.read_text(encoding="utf-8")
+        # Extract system role: text between 【系统角色】 and 【安全规则】
+        role_start = raw.find("【系统角色】")
+        role_end = raw.find("【安全规则】")
+        if role_start != -1 and role_end != -1:
+            _SYSTEM_ROLE = raw[role_start + len("【系统角色】"):role_end].strip()
+        else:
+            _SYSTEM_ROLE = "你是资深数据分析师，只输出可执行的 SQLite SQL。"
+        # User template: everything from 【安全规则】 onward
+        _PROMPT_TEMPLATE = raw[role_end:].strip() if role_end != -1 else raw
+    return _SYSTEM_ROLE, _PROMPT_TEMPLATE
 
 
 @lru_cache(maxsize=1)
@@ -48,21 +70,22 @@ class QueryResult:
     trace: list[dict] = field(default_factory=list)  # 每轮 {sql, error}
 
 
-def _build_prompt(question: str) -> str:
-    global _PROMPT_TEMPLATE
-    if _PROMPT_TEMPLATE is None:
-        _PROMPT_TEMPLATE = PROMPT_PATH.read_text(encoding="utf-8")
-    return _PROMPT_TEMPLATE.format(
+def _build_prompt(question: str) -> tuple[str, str]:
+    """Return (system_role, user_prompt) for the Text2SQL LLM call."""
+    system_role, template = _load_prompt()
+    user_prompt = template.format(
         schema=SCHEMA,
         few_shots=format_few_shots(),
         question=question,
     )
+    return system_role, user_prompt
 
 
-def _ask_llm(client: OpenAI, prompt: str, feedback: str | None = None) -> str:
+def _ask_llm(client: OpenAI, question: str, feedback: str | None = None) -> str:
+    system_role, base_prompt = _build_prompt(question)
     messages: list[dict] = [
-        {"role": "system", "content": "你是资深数据分析师，只输出可执行的 SQLite SQL。"},
-        {"role": "user", "content": prompt},
+        {"role": "system", "content": system_role},
+        {"role": "user", "content": base_prompt},
     ]
     if feedback:
         messages.append({"role": "user", "content": feedback})
@@ -88,7 +111,6 @@ def query_data(
     max_attempts = max_attempts or settings.sql_retry_max
     engine = _get_engine(str(db_path or DB_PATH))
     client = get_client()
-    base_prompt = _build_prompt(question)
 
     trace: list[dict] = []
     feedback: str | None = None
@@ -97,7 +119,7 @@ def query_data(
     for attempt in range(1, max_attempts + 1):
         # ── LLM call ──
         try:
-            raw = _ask_llm(client, base_prompt, feedback)
+            raw = _ask_llm(client, question, feedback)
         except APIError as e:
             trace.append({"error": f"LLM API error: {e}"})
             if attempt < max_attempts:

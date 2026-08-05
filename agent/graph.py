@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import json
 import logging
+from pathlib import Path
 from typing import Any, AsyncIterator, TypedDict
 
 import pandas as pd
@@ -21,6 +22,7 @@ import plotly.graph_objects as go
 from langgraph.graph import END, START, StateGraph
 from openai import APIError
 
+from agent.llm_client import get_client
 from agent.planner import plan
 from agent.tools.explain_result import explain_result
 from agent.tools.introduce_me import introduce_me
@@ -29,6 +31,8 @@ from agent.tools.visualize import visualize
 from configs.settings import settings
 
 logger = logging.getLogger(__name__)
+
+PERSONA_PATH = Path(__file__).resolve().parent.parent / "prompts" / "system_persona.md"
 
 
 class AgentState(TypedDict, total=False):
@@ -174,6 +178,57 @@ def _make_tool_node(tool_name: str):
     return node
 
 
+def _has_introduce_me(trace: list[dict]) -> bool:
+    """Check if the trace contains an introduce_me call."""
+    return any(t.get("tool") == "introduce_me" for t in trace)
+
+
+def _polish_with_persona(raw_answer: str, trace: list[dict]) -> str:
+    """Lightweight LLM polish to ensure the answer follows persona rules.
+
+    Only called when the trace contains an introduce_me call, so the final
+    answer maintains first-person voice and style consistency.
+    """
+    try:
+        persona = PERSONA_PATH.read_text(encoding="utf-8")
+    except Exception:
+        logger.warning("Failed to load persona for polish, using raw answer")
+        return raw_answer
+
+    # Build a compact context from introduce_me results
+    intro_results = [
+        t.get("summary", "") for t in trace if t.get("tool") == "introduce_me"
+    ]
+    intro_context = "\n".join(intro_results)[:1200]
+
+    client = get_client()
+    try:
+        resp = client.chat.completions.create(
+            model=settings.deepseek_model,
+            messages=[
+                {"role": "system", "content": persona},
+                {
+                    "role": "user",
+                    "content": (
+                        "请将以下草稿润色为最终回答。要求：\n"
+                        "1. 严格用第一人称（'我'）\n"
+                        "2. 保持原有数据和数字不变\n"
+                        "3. 自然真诚，像在聊天而非读简历\n"
+                        "4. 不要添加原文没有的信息\n\n"
+                        f"【草稿】\n{raw_answer}\n\n"
+                        f"【参考上下文】\n{intro_context}"
+                    ),
+                },
+            ],
+            temperature=0.2,  # low temperature for faithful polish
+        )
+        polished = (resp.choices[0].message.content or "").strip()
+        return polished or raw_answer
+    except Exception:
+        logger.exception("Persona polish failed, falling back to raw answer")
+        return raw_answer
+
+
 def finalize_node(state: AgentState) -> dict:
     """Emit final answer (fallback if max-steps reached without explicit finalize)."""
     answer = state.get("final_answer", "")
@@ -189,6 +244,12 @@ def finalize_node(state: AgentState) -> dict:
                 answer = "已达到最大步数，最后结果：\n" + last_summary
         else:
             answer = "未能生成回答。"
+
+    # If introduce_me was called, polish the answer to maintain persona
+    trace = state.get("trace", [])
+    if _has_introduce_me(trace):
+        answer = _polish_with_persona(answer, trace)
+
     return {"final_answer": answer}
 
 

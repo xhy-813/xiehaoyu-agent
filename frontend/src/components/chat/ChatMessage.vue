@@ -429,4 +429,14 @@ onMounted(() => {
 .irt-header { display: flex; align-items: center; gap: 0.4rem; margin-bottom: 0.2rem; }
 .irt-num { font-size: 0.68rem; color: var(--text-3); }
 .irt-summary { font-size: 0.78rem; color: var(--text-2); line-height: 1.4; word-break: break-word; }
+
+@media (max-width: 640px) {
+  .chat-message { padding: 0.75rem 0; gap: 0.5rem; }
+  .chat-message-consecutive { padding-top: 0.1rem; }
+  .msg-content { font-size: 0.85rem; line-height: 1.65; }
+  .chat-message.user .msg-bubble { max-width: 85%; }
+  .msg-actions { opacity: 1; }
+  .ir-table-wrap { max-height: 200px; overflow: auto; }
+  .ir-chart-wrap { min-height: 220px; }
+}
 </style>

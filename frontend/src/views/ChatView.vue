@@ -188,8 +188,10 @@ function ask(q: string) {
   margin: 0 auto;
 }
 @media (max-width: 640px) {
-  .cf-bar { padding: 0.75rem 1rem; }
+  .cf-bar { padding: 0.6rem 0.8rem; }
   .cf-subtitle { display: none; }
+  .cf-title { font-size: 0.85rem; }
+  .cf-back span { display: none; }
 }
 
 </style>

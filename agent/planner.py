@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 from pathlib import Path
 
 from openai import OpenAI
@@ -32,6 +33,22 @@ def _load_planner_system() -> str:
     return _PLANNER_SYSTEM
 
 
+def _sanitize_control_chars(s: str) -> str:
+    """Escape bare control characters (U+0000-U+001F) so json.loads can parse them.
+
+    LLMs occasionally emit literal newlines inside JSON string values, which
+    violates the JSON spec and causes JSONDecodeError.  This replaces the most
+    common offenders with their proper JSON escape sequences.
+    """
+    _ESCAPE_MAP = {"\n": "\\n", "\r": "\\r", "\t": "\\t"}
+
+    def _replace(m: re.Match) -> str:
+        ch = m.group(0)
+        return _ESCAPE_MAP.get(ch, f"\\u{ord(ch):04x}")
+
+    return re.sub(r"[\x00-\x1f]", _replace, s)
+
+
 def _extract_json(raw: str) -> dict:
     """Parse JSON from LLM output, handling markdown code blocks and
     nested braces (e.g. ``{"answer": "使用 Pandas (Python 库)"}``).
@@ -48,6 +65,10 @@ def _extract_json(raw: str) -> dict:
         lines = raw.split("\n")
         lines = [l for l in lines[1:] if not l.strip() == "```"]
         raw = "\n".join(lines).strip()
+
+    # Escape bare control characters that LLMs occasionally emit inside strings
+    raw = _sanitize_control_chars(raw)
+
     try:
         return json.loads(raw)
     except json.JSONDecodeError:

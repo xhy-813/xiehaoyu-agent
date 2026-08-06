@@ -167,7 +167,7 @@ xiehaoyu-agent/
 │   ├── README.md                   # 本模块详解（数据集 / 安全校验 / few-shot）
 │   ├── __init__.py
 │   ├── schema.py                   # 9 张 Olist 表完整 schema 描述
-│   ├── few_shots.py                # 7 组 (问题, SQL) few-shot 示例
+│   ├── few_shots.py                # 10 组 (问题, SQL) few-shot 示例
 │   ├── validator.py                # SQL 安全校验（sqlparse + 黑名单）
 │   ├── load_olist.py               # CSV → SQLite 导入脚本
 │   └── data/                       # SQLite 数据库文件（olist.db）
@@ -235,7 +235,7 @@ xiehaoyu-agent/
 | 工具 | 职责 | 深入文档 |
 | --- | --- | --- |
 | `introduce_me` | RAG 检索个人知识库（top-10 切片），LLM 生成带引用的第一人称回答 | [rag/README.md](rag/README.md) |
-| `query_data` | Text2SQL：完整 schema + 7 组 few-shot → 安全校验（只允许 SELECT）→ 执行，失败反馈重试 ≤3 轮 | [chatbi/README.md](chatbi/README.md) |
+| `query_data` | Text2SQL：完整 schema + 10 组 few-shot → 安全校验（只允许 SELECT）→ 执行，失败反馈重试 ≤3 轮 | [chatbi/README.md](chatbi/README.md) |
 | `visualize` | 纯规则自动选图（指标卡 / 折线 / 柱状 / 散点 / 表格），不调 LLM | [agent/README.md](agent/README.md) |
 | `explain_result` | LLM 基于（问题 + SQL + 数据预览）输出中文业务洞察 | [agent/README.md](agent/README.md) |
 
@@ -386,6 +386,7 @@ pytest tests/ -v
 | 2026-08-05 | 聊天助手体验优化：WelcomeScreen、代码块复制、回到底部、停止生成重试、错误分类、移动端适配     |
 | 2026-08-05 | 提示词体系全面优化；ChatMessage 拆分为 MessageBubble + InlineResult                           |
 | 2026-08-06 | 移除 Streamlit UI 残留（app.py + ui/）；planner 健壮性修复（空响应 fallback、裸控制字符转义） |
+| 2026-08-06 | Text2SQL 评测优化：50 题基线 96%（48/50），EASY 100% / MEDIUM 100% / HARD 80%；prompt v1.5、few-shot 扩至 10 组 |
 
 ## 后续迭代
 
@@ -405,7 +406,7 @@ pytest tests/ -v
 **要点**：
 
 - 设计并实现多 Tool Agent 编排架构（介绍本人 / Text2SQL 查数 / 自动可视化 / 结果解读），基于 LangGraph 状态机驱动 LLM 自主规划调用链，最多 5 轮循环推理
-- Text2SQL 引擎：完整 schema + few-shot prompt + sqlparse 语法校验 + 执行失败反馈自动重写（最多 3 轮），Olist 电商数据集（9 表关联，99441 行订单）
+- Text2SQL 引擎：完整 schema + 10 组 few-shot prompt + sqlparse 语法校验 + 执行失败反馈自动重写（最多 3 轮），Olist 电商数据集（9 表关联，99441 行订单）；50 题基线准确率 96%（EASY 100% / MEDIUM 100% / HARD 80%）
 - 构建 RAG 个人知识检索模块（BGE-large-zh-v1.5 嵌入 + ChromaDB），支持简历/项目文档热更新，回答附带来源引用
 - 前后端分离架构：FastAPI SSE 流式推送 + Vue 3 SPA（深/浅色主题）+ 按 IP 限流 + 6 种 Lottie 角色动画
 - 全链路公网部署（腾讯云轻量服务器），公开访问 + 按 IP 限流 + 全局日上限

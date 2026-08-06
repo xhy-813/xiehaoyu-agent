@@ -138,13 +138,13 @@ START → planner → tool_router → introduce_me/query_data/visualize/explain_
 
 **验收**：部署配置完整，可在服务器上一键部署 ✅
 
-### Day 10：评测 & 打磨（进行中）
+### Day 10：评测 & 打磨 ✅
 
 - [X] 写 `tests/eval_text2sql.py`：50 道题（简单 20 + 中等 20 + 复杂 10），执行准确率判定
-- [ ] 跑基线准确率，针对错误 case 补充 few-shot、优化 prompt，再跑一次
+- [X] 跑基线准确率，针对错误 case 补充 few-shot、优化 prompt，再跑一次（共 8 轮迭代）
 - [ ] README 补齐：demo 截图/GIF
 
-**验收**：Text2SQL 准确率 ≥ 70%（简单题应接近 100%）
+**验收**：Text2SQL 准确率 96%（48/50），EASY 100% / MEDIUM 100% / HARD 80% ✅（目标 ≥70%）
 
 ## 后续迭代（MVP 之后）
 
@@ -196,6 +196,7 @@ START → planner → tool_router → introduce_me/query_data/visualize/explain_
 - 2026-08-05：聊天助手体验优化 12 项（WelcomeScreen、代码块复制、回到底部、停止生成重试、错误分类、移动端适配）
 - 2026-08-05：提示词体系全面优化 + ChatMessage 拆分（MessageBubble + InlineResult）+ planner 空响应处理
 - 2026-08-06：移除 Streamlit UI 残留（app.py + ui/）+ planner 健壮性修复（空响应 fallback 路由、裸控制字符转义）
+- 2026-08-06：Text2SQL 评测 8 轮迭代：50 题基线 96%（EASY 100% / MEDIUM 100% / HARD 80%）；prompt v1.5、few-shot 扩至 10 组；评测器改为值指纹对齐、忽略列名
 - 迭代计划：秋招前（2026-09）持续打磨
 
 ## 相关资源

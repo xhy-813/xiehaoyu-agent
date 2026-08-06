@@ -201,12 +201,7 @@ xiehaoyu-agent/
 ├── overview.md                     # 项目概述与实施计划
 ├── .env.example                    # 环境变量模板
 ├── .gitignore                      # Git 忽略规则
-└── LICENSE                         # 开源许可证
-```
-
-## 功能详解
-
-### Tool 1: `introduce_me` — 个人知识库检索
+└── Lool 1: `introduce_me` — 个人知识库检索
 
 **流程**：用户问题 → BGE-large-zh-v1.5 嵌入 → Chroma 向量检索 top-10 → 构造 RAG prompt → LLM 生成第一人称回答
 

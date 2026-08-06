@@ -129,14 +129,11 @@ START → planner → tool_router → introduce_me/query_data/visualize/explain_
 
 **验收**：前后端联调，SSE 流式推送正常，图表渲染完整 ✅
 
-### Day 9：部署配置 + 品牌形象 ✅
+### Day 9：部署配置 + 品牌### Day 6：Streamlit UI（已移除）
 
-- [x] Nginx 配置：SPA 静态文件 + API 反向代理 + `proxy_buffering off`
-- [x] systemd 服务文件：uvicorn 守护进程
-- [x] 一键部署脚本 `deploy/deploy.sh`（含 HTTPS 自动配置）
-- [x] `.env.example` 更新：新增 CORS_ORIGINS、限流、Agent 参数等配置项
-- [x] Lottie 动画角色系统：6 种动画状态（idle/thinking/answering/presenting/error/welcome）
-- [x] 作品集主页（PortfolioView）+ 全屏聊天页（/chat）
+> Streamlit UI 已在架构迁移至 Vue 3 + FastAPI 后移除。
+
+ioView）+ 全屏聊天页（/chat）
 - [x] 品牌形象整合方案设计（方案 F：2D 二次元形象动画整合）
 
 **验收**：部署配置完整，可在服务器上一键部署 ✅
@@ -176,7 +173,7 @@ START → planner → tool_router → introduce_me/query_data/visualize/explain_
 2. **限流从中间件改为依赖**：`backend/app/middleware/rate_limit.py` → `backend/app/deps/rate_limit.py`，作为普通函数在 chat router 中调用，而非 ASGI 中间件
 3. **结果展示从独立面板改为内联**：ResultPanel 组件保留但未使用，结果展示改为内联到 ChatMessage.vue 中，每条消息独立展示自己的图表/数据/轨迹
 4. **动画状态管理从 composable 改为 store 内置**：`useAvatarState` composable 存在但 `chat.ts` store 中直接内置了动画状态管理逻辑，更简洁
-5. **Streamlit 保留兼容**：`app.py` + `ui/` 目录保留，作为快速体验入口，与 Vue 3 + FastAPI 架构并存
+5. **Streamlit 已移除**：`app.py` + `ui/` 目录已在架构迁移完成后清理，正式入口为 Vue 3 + FastAPI
 
 ## 时间线
 

@@ -33,7 +33,10 @@ def get_embedding_function():
     """
     import os
 
-    # .env is loaded by configs.settings at import time — no need to reload
+    from dotenv import load_dotenv
+
+    load_dotenv()  # ensure .env is loaded (e.g. when running python -m rag.ingest standalone)
+
     api_key = os.getenv("EMBED_API_KEY", "")
     if api_key:
         return _ZhipuEmbeddingFunction(

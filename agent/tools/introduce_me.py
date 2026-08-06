@@ -9,13 +9,13 @@
 
 from __future__ import annotations
 
-import re
 from dataclasses import dataclass
 from pathlib import Path
 
 from openai import OpenAI
 
 from agent.llm_client import get_client
+from agent.sanitize import sanitize_input
 from configs.settings import settings
 from rag.retriever import Hit, retrieve
 
@@ -31,35 +31,17 @@ class IntroduceResult:
     hits: list[Hit]
 
 
-# Patterns that indicate prompt-injection attempts
-_INJECTION_PATTERNS = [
-    re.compile(r"ignore\s+(all\s+)?(previous|prior|above|the\s+above)\s+(instructions?|rules?|constraints?)", re.IGNORECASE),
-    re.compile(r"(system|assistant|user):\s*$", re.IGNORECASE | re.MULTILINE),
-    re.compile(r"you\s+are\s+now\s+(a\s+)?(different|new|another)\s+(assistant|ai|bot|agent)", re.IGNORECASE),
-    re.compile(r"forget\s+(everything|all)\s+(you\s+know|you.ve\s+(learned|been\s+told))", re.IGNORECASE),
-    re.compile(r"\[system\]\s*\(", re.IGNORECASE),
-    re.compile(r"<\|im_start\|>|<\|im_end\|>", re.IGNORECASE),
-    re.compile(r"```\s*(system|assistant|user)\s*$", re.IGNORECASE | re.MULTILINE),
+# Self-introduction keywords used to decide whether to inject the
+# structured self-intro template (saves ~200 tokens on non-intro queries).
+_SELF_INTRO_KEYWORDS = [
+    "介绍你自己", "介绍一下", "你是谁", "你是做什么", "你的背景",
+    "自我介绍一下", "做个自我介绍", "简单介绍", "认识一下",
 ]
 
 
-def _sanitize_input(text: str) -> str:
-    """Strip markdown code fences and detect obvious injection patterns.
-
-    Returns the sanitized text, or raises ValueError if a clear injection
-    attempt is detected.
-    """
-    # Strip markdown code fences that could be used to escape the prompt
-    cleaned = re.sub(r"```[\s\S]*?```", "[code block removed]", text)
-    # Strip any remaining unclosed triple-backtick markers
-    cleaned = re.sub(r"```", "[code block removed]", cleaned)
-    cleaned = re.sub(r"`{1,2}[^`]*`{1,2}", "[inline code removed]", cleaned)
-
-    for pattern in _INJECTION_PATTERNS:
-        if pattern.search(cleaned):
-            raise ValueError(f"Input contains potentially unsafe content: {pattern.pattern}")
-
-    return cleaned
+def _is_self_intro(question: str) -> bool:
+    """Check if the question is a self-introduction request."""
+    return any(kw in question for kw in _SELF_INTRO_KEYWORDS)
 
 
 def _format_context(hits: list[Hit]) -> str:
@@ -78,13 +60,21 @@ def introduce_me(question: str, top_k: int = 10) -> IntroduceResult:
     Retrieves top_k relevant chunks from the personal knowledge base,
     then asks the LLM to synthesize a natural, first-person answer.
     """
-    safe_question = _sanitize_input(question)
+    safe_question = sanitize_input(question)
     hits = retrieve(safe_question, top_k=top_k)
     persona = PERSONA_PATH.read_text(encoding="utf-8")
     context = _format_context(hits) or "(暂无检索片段)"
 
     rag_template = RAG_PROMPT_PATH.read_text(encoding="utf-8")
-    user_prompt = rag_template.format(context=context, question=safe_question)
+
+    # Conditionally inject the structured self-intro template to save tokens
+    # on non-intro queries (e.g. "你 K12 项目用了什么技术栈")
+    if _is_self_intro(safe_question):
+        user_prompt = rag_template.format(context=context, question=safe_question)
+    else:
+        # Remove the self-intro template section for focused queries
+        no_template = rag_template.split("【自我介绍模板】")[0].strip()
+        user_prompt = no_template.format(context=context, question=safe_question)
 
     client = get_client()
     try:

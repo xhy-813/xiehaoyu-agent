@@ -31,24 +31,10 @@
     <div class="cf-body">
       <ChatWidget>
         <template #empty>
-          <div class="cf-empty">
-            <AnimatedAvatar state="idle" :size="88" />
-            <p class="cf-welcome">
-              你好，我是 Xiehaoyu-Agent。可以问我个人经历与技术栈，
-              或让我查数据、画图表。
-            </p>
-            <div class="chips">
-              <button
-                v-for="q in WELCOME_QUESTIONS"
-                :key="q.question"
-                class="chip"
-                :disabled="chat.isStreaming"
-                @click="ask(q.question)"
-              >
-                {{ q.question }}
-              </button>
-            </div>
-          </div>
+          <WelcomeScreen
+            :disabled="chat.isStreaming"
+            @ask="ask"
+          />
         </template>
       </ChatWidget>
     </div>
@@ -58,10 +44,9 @@
 <script setup lang="ts">
 import { useRouter } from 'vue-router'
 import ChatWidget from '@/components/chat/ChatWidget.vue'
-import AnimatedAvatar from '@/components/shared/AnimatedAvatar.vue'
+import WelcomeScreen from '@/components/chat/WelcomeScreen.vue'
 import { useChatStore } from '@/stores/chat'
 import { useEscapeKey } from '@/composables/useMediaQuery'
-import { WELCOME_QUESTIONS } from '@/utils/quick-questions'
 
 const router = useRouter()
 const chat = useChatStore()
@@ -202,54 +187,11 @@ function ask(q: string) {
   width: 100%;
   margin: 0 auto;
 }
-.cf-empty {
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  padding: 1rem;
-  gap: 1rem;
-}
-.cf-welcome {
-  color: var(--text-2);
-  font-size: 0.95rem;
-  line-height: 1.7;
-  max-width: 420px;
-  margin: 0;
-}
-.chips {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 0.5rem;
-  max-width: 520px;
-}
-.chip {
-  font-family: var(--font-mono);
-  border: 1px solid var(--chip-border);
-  border-radius: var(--radius-pill);
-  background: var(--chip-bg);
-  color: var(--accent-strong);
-  font-size: 0.75rem;
-  padding: 0.45rem 0.95rem;
-  cursor: pointer;
-  transition: color 0.2s, border-color 0.2s, background 0.2s, transform 0.2s;
-}
-.chip:hover:not(:disabled) {
-  border-color: var(--chip-border-hover);
-  background: var(--chip-bg-hover);
-  transform: translateY(-2px);
-}
-.chip:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
-}
-
 @media (max-width: 640px) {
-  .cf-bar { padding: 0.75rem 1rem; }
+  .cf-bar { padding: 0.6rem 0.8rem; }
   .cf-subtitle { display: none; }
+  .cf-title { font-size: 0.85rem; }
+  .cf-back span { display: none; }
 }
 
 </style>

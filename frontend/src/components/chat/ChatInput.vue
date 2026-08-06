@@ -12,6 +12,7 @@
         round
         size="large"
         @keydown.enter="handleEnter"
+        @keydown="onKeydown"
       />
       <div class="input-actions">
         <span class="char-count" v-if="text.length > 0" :class="{ 'char-over': text.length > 300 }">{{ text.length }}{{ text.length > 300 ? '/300' : '' }}</span>
@@ -70,6 +71,13 @@ function handleEnter(e: KeyboardEvent) {
   if (e.shiftKey) return
   e.preventDefault()
   handleSend()
+}
+
+function onKeydown(e: KeyboardEvent) {
+  if (e.key === 'Escape' && text.value) {
+    text.value = ''
+    inputRef.value?.focus()
+  }
 }
 
 // 页面挂载时自动聚焦
@@ -141,6 +149,19 @@ watch(() => props.streaming, (now) => {
   font-size: 0.7rem;
   color: var(--text-3);
   margin: 0.4rem 0 0;
+}
+
+@media (max-width: 640px) {
+  .chat-input-wrapper {
+    width: 100%;
+  }
+  .input-container {
+    padding: 0.3rem 0.4rem 0.3rem 0.9rem;
+    border-radius: 22px;
+  }
+  .input-hint {
+    display: none;
+  }
 }
 
 </style>

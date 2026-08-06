@@ -1,5 +1,11 @@
 <template>
-  <div class="chat-message" :class="[message.role, { 'chat-message-enter': animate }]">
+  <div
+    class="chat-message"
+    :class="[
+      message.role,
+      { 'chat-message-enter': animate && !isFirstAssistantMessage, 'chat-message-enter-first': animate && isFirstAssistantMessage, 'chat-message-consecutive': isConsecutive }
+    ]"
+  >
     <!-- Avatar -->
     <div class="msg-avatar">
       <n-avatar v-if="message.role === 'user'" :size="34" round :style="{ background: 'linear-gradient(135deg, #6366f1, #818cf8)' }">
@@ -16,13 +22,15 @@
     <div class="msg-body">
       <div class="msg-role">
         {{ message.role === 'user' ? '你' : 'Xiehaoyu-Agent' }}
-        <span class="msg-time">{{ formatTime(message.timestamp) }}</span>
+        <span v-if="!isConsecutive" class="msg-time">{{ formatTime(message.timestamp) }}</span>
       </div>
 
       <!-- Text content -->
-      <div v-if="message.content" class="msg-bubble" :class="{ 'msg-bubble-error': isError }">
-        <div class="msg-content" :class="{ 'streaming-cursor': isStreaming }" v-html="renderedContent" />
-      </div>
+      <template v-if="message.content">
+        <div class="msg-bubble-wrap" :class="{ 'msg-bubble-user': message.role === 'user', 'msg-bubble-assistant': message.role === 'assistant' }">
+          <MessageBubble :content="message.content" :is-error="isError" :is-streaming="!!isStreaming" />
+        </div>
+      </template>
       <div v-else class="msg-loading">
         <div class="loading-row">
           <n-spin :size="16" />
@@ -57,6 +65,15 @@
         </div>
       </div>
 
+      <!-- Stopped hint -->
+      <div v-if="wasStopped && message.content" class="msg-stopped-hint">
+        已停止生成
+        <button class="action-btn retry-btn" @click="retry">
+          <n-icon size="14"><svg viewBox="0 0 24 24"><path fill="currentColor" d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg></n-icon>
+          重试
+        </button>
+      </div>
+
       <!-- Message actions (assistant, non-streaming): copy / retry / step tags -->
       <div v-if="message.role === 'assistant' && !isStreaming && message.content" class="msg-actions">
         <button class="action-btn" aria-label="复制内容" title="复制" @click="copyContent">
@@ -72,64 +89,7 @@
       </div>
 
       <!-- Inline result: data + chart + trace for assistant messages -->
-      <div v-if="message.role === 'assistant' && message.trace && message.trace.length > 0 && !isStreaming" class="inline-result">
-        <!-- Chart -->
-        <div v-if="chartJson" class="ir-section">
-          <div class="ir-section-header">
-            <n-icon size="16" color="#64ffda"><svg viewBox="0 0 24 24"><path fill="currentColor" d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"/></svg></n-icon>
-            <span>图表</span>
-            <n-tag size="tiny" :bordered="false" type="success">{{ chartTypeLabel }}</n-tag>
-          </div>
-          <div class="ir-chart-wrap">
-            <ChartRenderer :figure-json="chartJson" />
-          </div>
-        </div>
-
-        <!-- Data table: always visible -->
-        <div v-if="dataArtifact" class="ir-section">
-          <div class="ir-section-header">
-            <n-icon size="16" color="#64b5f6"><svg viewBox="0 0 24 24"><path fill="currentColor" d="M4 6h16v2H4zm0 5h16v2H4zm0 5h16v2H4z"/></svg></n-icon>
-            <span>数据表</span>
-            <n-tag size="tiny" :bordered="false">{{ rowsCols }}</n-tag>
-          </div>
-          <n-collapse :default-expanded-names="[]">
-            <n-collapse-item title="SQL 语句" name="sql">
-              <n-code :code="dataArtifact.sql || '(无)'" language="sql" :word-wrap="true" />
-            </n-collapse-item>
-          </n-collapse>
-          <div class="ir-table-wrap">
-            <n-data-table :columns="columns" :data="rows" :max-height="260" size="small" :bordered="false" striped virtual-scroll />
-          </div>
-        </div>
-
-        <!-- Trace: collapsible -->
-        <n-collapse :default-expanded-names="[]">
-          <n-collapse-item name="trace">
-            <template #header>
-              <div class="ir-section-header">
-                <n-icon size="16" color="#ffb86c"><svg viewBox="0 0 24 24"><path fill="currentColor" d="M19 3h-4.18C14.4 1.84 13.3 1 12 1c-1.3 0-2.4.84-2.82 2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 0c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm2 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg></n-icon>
-                <span>执行轨迹</span>
-                <n-tag size="tiny" :bordered="false" type="warning">{{ message.trace.length }} 步</n-tag>
-              </div>
-            </template>
-            <div class="ir-trace">
-              <div v-for="(step, i) in message.trace" :key="i" class="irt-step">
-                <div class="irt-line">
-                  <div class="irt-dot" :style="{ background: stepColor(step.tool) }" />
-                  <div v-if="i < message.trace.length - 1" class="irt-connector" />
-                </div>
-                <div class="irt-body">
-                  <div class="irt-header">
-                    <n-tag size="tiny" :bordered="false" :type="tagType(step.tool)" round>{{ toolLabel(step.tool) }}</n-tag>
-                    <span class="irt-num">Step {{ i + 1 }}</span>
-                  </div>
-                  <div class="irt-summary">{{ step.summary }}</div>
-                </div>
-              </div>
-            </div>
-          </n-collapse-item>
-        </n-collapse>
-      </div>
+      <InlineResult v-if="message.role === 'assistant' && message.trace && message.trace.length > 0 && !isStreaming" :trace="message.trace" />
     </div>
   </div>
 </template>
@@ -137,21 +97,32 @@
 <script setup lang="ts">
 import { computed, ref, onMounted } from 'vue'
 import { useMessage } from 'naive-ui'
-import ChartRenderer from '@/components/result/ChartRenderer.vue'
 import AnimatedAvatar from '@/components/shared/AnimatedAvatar.vue'
+import MessageBubble from './MessageBubble.vue'
+import InlineResult from './InlineResult.vue'
 import type { ChatMessage } from '@/stores/chat'
 import { useChatStore } from '@/stores/chat'
-import { CHART_LABELS, toolLabel, tagType, stepColor } from '@/utils/tool-constants'
-import { findDataArtifact, findChartArtifact } from '@/utils/artifact'
-import { renderMarkdown } from '@/utils/markdown'
+import { toolLabel, tagType, stepColor } from '@/utils/tool-constants'
 import type { AvatarState } from '@/components/shared/AnimatedAvatar.vue'
 
-const props = defineProps<{ message: ChatMessage; isStreaming?: boolean }>()
+const props = defineProps<{ message: ChatMessage; isStreaming?: boolean; wasStopped?: boolean }>()
 
 const chat = useChatStore()
 
 const messageApi = useMessage()
 const animate = ref(true)
+
+const isConsecutive = computed(() => {
+  const idx = chat.messages.indexOf(props.message as ChatMessage)
+  if (idx <= 0) return false
+  return chat.messages[idx - 1].role === props.message.role
+})
+
+const isFirstAssistantMessage = computed(() => {
+  const idx = chat.messages.indexOf(props.message as ChatMessage)
+  return idx === 0 || (props.message.role === 'assistant' &&
+    chat.messages.slice(0, idx).every(m => m.role !== 'assistant'))
+})
 
 const isLastAssistant = computed(() =>
   props.message.role === 'assistant' &&
@@ -162,8 +133,6 @@ const avatarState = computed<AvatarState>(() => {
   if (!isLastAssistant.value) return 'idle'
   return chat.avatarState
 })
-
-const renderedContent = computed(() => renderMarkdown(props.message.content))
 
 const isError = computed(() => props.message.error === true)
 
@@ -190,29 +159,6 @@ async function copyContent() {
   }
 }
 
-// --- Result data from trace ---
-const trace = computed(() => props.message.trace || [])
-
-const dataArtifact = computed(() => findDataArtifact(trace.value))
-const chartArtifact = computed(() => findChartArtifact(trace.value))
-const chartJson = computed(() => chartArtifact.value?.figure_json || null)
-const columns = computed(() => {
-  const cols = dataArtifact.value?.df_columns || []
-  return cols.map((c: string) => ({ title: c, key: c, ellipsis: { tooltip: true }, minWidth: 80, maxWidth: 300 }))
-})
-const rows = computed(() => {
-  if (!dataArtifact.value?.df_json) return []
-  try { return JSON.parse(dataArtifact.value.df_json) } catch { return [] }
-})
-const rowsCols = computed(() => {
-  const a = dataArtifact.value
-  return a?.df_shape ? `${a.df_shape.rows}×${a.df_shape.cols}` : '--'
-})
-const chartTypeLabel = computed(() => {
-  const t = chartArtifact.value?.chart_type || ''
-  return CHART_LABELS[t] || t || '--'
-})
-
 onMounted(() => {
   setTimeout(() => { animate.value = false }, 300)
 })
@@ -231,6 +177,15 @@ onMounted(() => {
   background: rgba(100, 255, 218, 0.015);
 }
 .chat-message.user { flex-direction: row-reverse; }
+.chat-message-consecutive {
+  padding-top: 0.15rem;
+}
+.chat-message-consecutive .msg-avatar {
+  visibility: hidden;
+}
+.chat-message-consecutive .msg-role {
+  display: none;
+}
 .msg-avatar { flex-shrink: 0; padding-top: 2px; }
 .msg-body { flex: 1; min-width: 0; }
 .msg-role {
@@ -240,51 +195,29 @@ onMounted(() => {
 }
 .chat-message.user .msg-role { flex-direction: row-reverse; }
 .msg-time { font-weight: 400; font-size: 0.72rem; color: var(--text-3); opacity: 0.65; }
-.msg-bubble { position: relative; border-radius: 12px; overflow: hidden; overflow-wrap: break-word; }
-.msg-bubble-error {
-  background: rgba(255, 80, 80, 0.06);
-  border: 1px solid rgba(255, 80, 80, 0.2);
-  border-radius: 12px;
-  padding: 0.6rem 0.9rem;
-}
-.msg-bubble-error .msg-content { color: #ff8080; }
 
-/* 用户气泡：更饱和的描边渐变 */
-.chat-message.user .msg-bubble {
+/* Bubble wrapper */
+.msg-bubble-wrap { position: relative; }
+.msg-bubble-assistant {
+  border-left: 2px solid rgba(100, 255, 218, 0.25);
+  padding-left: 0.75rem;
+  background: var(--msg-assistant-bg);
+  border-radius: 0 8px 8px 0;
+}
+.msg-bubble-user {
   background: linear-gradient(
     135deg,
     rgba(100, 255, 218, 0.14) 0%,
     rgba(100, 255, 218, 0.06) 100%
   );
   border: 1px solid rgba(100, 255, 218, 0.18);
-  box-shadow: 0 2px 12px rgba(100, 255, 218, 0.06);
+  box-shadow: 0 2px 12px rgba(100, 255, 218, 0.06), var(--msg-user-shadow);
   padding: 0.75rem 1rem;
   max-width: 72%;
   border-radius: 18px 18px 4px 18px;
   margin-left: auto;
 }
 
-/* 助手气泡：左侧 accent 竖线 */
-.chat-message.assistant .msg-bubble {
-  border-left: 2px solid rgba(100, 255, 218, 0.25);
-  padding-left: 0.75rem;
-}
-
-.msg-content {
-  font-size: 0.875rem; line-height: 1.75; color: var(--text-1); word-break: break-word;
-}
-.msg-content :deep(p) { margin: 0.5em 0; }
-.msg-content :deep(p:first-child) { margin-top: 0; }
-.msg-content :deep(pre) { border-radius: 10px; overflow-x: auto; margin: 0.6em 0; }
-.msg-content :deep(code) { font-size: 0.84rem; }
-.msg-content :deep(blockquote) { border-left: 3px solid var(--accent-strong); padding-left: 0.8rem; margin: 0.5em 0; color: var(--text-2); }
-.msg-content :deep(a) { color: var(--accent-strong); text-decoration: none; }
-.msg-content :deep(a:hover) { text-decoration: underline; }
-.msg-content :deep(table) { border-collapse: collapse; margin: 0.5em 0; width: 100%; }
-.msg-content :deep(th), .msg-content :deep(td) { border: 1px solid var(--border); padding: 0.4rem 0.7rem; font-size: 0.85rem; text-align: left; }
-.msg-content :deep(th) { background: var(--bg-subtle); }
-.msg-content :deep(ul), .msg-content :deep(ol) { padding-left: 1.5em; }
-.msg-content :deep(li) { margin: 0.2em 0; }
 .msg-loading { padding: 0.5rem 0; }
 .loading-row { display: flex; align-items: center; gap: 0.5rem; }
 .dot-anim {
@@ -311,6 +244,12 @@ onMounted(() => {
   opacity: 0;
   transition: opacity 0.2s;
 }
+.chat-message-enter-first {
+  animation: fadeInUp 0.4s ease-out;
+}
+.chat-message-enter {
+  animation: fadeIn 0.2s ease-out;
+}
 .chat-message:hover .msg-actions { opacity: 1; }
 @media (hover: none) { .msg-actions { opacity: 1; } }
 .action-btn {
@@ -321,33 +260,38 @@ onMounted(() => {
   cursor: pointer; transition: background 0.2s, color 0.2s;
 }
 .action-btn:hover { background: rgba(255, 255, 255, 0.06); color: var(--text-1); }
+.action-btn.retry-btn {
+  color: var(--accent-strong);
+  border: 1px solid var(--accent-border);
+  background: rgba(100, 255, 218, 0.06);
+  gap: 0.3rem;
+  padding: 0 0.6rem;
+  width: auto;
+  border-radius: 6px;
+}
+.action-btn.retry-btn:hover {
+  background: rgba(100, 255, 218, 0.12);
+  border-color: var(--accent-strong);
+}
 
-/* Inline result */
-.inline-result {
-  margin-top: 0.75rem;
-  border: 1px solid var(--border);
-  background: var(--bg-card);
-  border-radius: 10px;
-  overflow: hidden;
+.msg-stopped-hint {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+  font-size: 0.78rem;
+  color: var(--text-3);
 }
-.ir-section {
-  border-bottom: 1px solid var(--border);
+.retry-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  color: var(--accent-strong);
+  font-size: 0.78rem;
 }
-.ir-section:last-child {
-  border-bottom: none;
-}
-.ir-section-header {
-  display: flex; align-items: center; gap: 0.5rem;
-  padding: 0.55rem 0.8rem; font-size: 0.83rem; color: var(--text-2);
-  background: var(--bg-subtle);
-}
-.ir-table-wrap {  }
-.ir-chart-wrap { padding: 0.5rem; }
-.ir-chart-inner { min-height: 300px; }
 
-/* Inline trace timeline */
-.ir-trace { padding: 0.5rem 0.8rem; }
-.irt-step { display: flex; gap: 0.5rem; }
+/* Live trace timeline (during streaming) */
+.irt-step { display: flex; gap: 0.5rem; animation: fadeIn 0.25s ease-out; }
 .irt-line { display: flex; flex-direction: column; align-items: center; width: 12px; flex-shrink: 0; }
 .irt-dot { width: 8px; height: 8px; border-radius: 50%; margin-top: 5px; }
 .irt-connector { width: 1px; flex: 1; background: var(--border); margin: 3px 0; }
@@ -355,4 +299,11 @@ onMounted(() => {
 .irt-header { display: flex; align-items: center; gap: 0.4rem; margin-bottom: 0.2rem; }
 .irt-num { font-size: 0.68rem; color: var(--text-3); }
 .irt-summary { font-size: 0.78rem; color: var(--text-2); line-height: 1.4; word-break: break-word; }
+
+@media (max-width: 640px) {
+  .chat-message { padding: 0.75rem 0; gap: 0.5rem; }
+  .chat-message-consecutive { padding-top: 0.1rem; }
+  .msg-bubble-user { max-width: 85%; }
+  .msg-actions { opacity: 1; }
+}
 </style>

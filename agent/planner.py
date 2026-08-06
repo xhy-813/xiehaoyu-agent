@@ -131,14 +131,25 @@ def plan(question: str, trace: list[dict], client: OpenAI | None = None) -> dict
             "finish_reason=%s",
             resp.choices[0].finish_reason,
         )
-        # Fallback: if this is the first step and the question looks like
-        # a self-intro, route to introduce_me; otherwise finalize safely
+        # Fallback: route based on question intent so a transient empty
+        # response doesn't silently discard a valid request.
         if not trace:
             intro_keywords = ["介绍", "你是谁", "你叫什么", "认识你", "你的背景"]
             if any(kw in question for kw in intro_keywords):
                 return {
                     "action": "call",
                     "tool": "introduce_me",
+                    "args": {"question": question},
+                }
+            data_keywords = [
+                "查", "统计", "排名", "Top", "top", "最高", "最低",
+                "趋势", "对比", "订单", "销售", "金额", "数据", "分析",
+                "多少", "平均", "占比", "画图", "可视化", "图表",
+            ]
+            if any(kw in question for kw in data_keywords):
+                return {
+                    "action": "call",
+                    "tool": "query_data",
                     "args": {"question": question},
                 }
         return {

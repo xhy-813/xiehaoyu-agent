@@ -101,6 +101,7 @@ function startRename(s: SessionSummary) {
 }
 
 async function submitRename(id: string) {
+  if (renamingId.value !== id) return  // Esc 已取消后移除 input 触发的 stale blur，直接忽略
   const title = renameText.value.trim()
   renamingId.value = null
   if (title) await sessions.rename(id, title)

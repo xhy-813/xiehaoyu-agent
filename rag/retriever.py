@@ -17,6 +17,7 @@ from functools import lru_cache
 from pathlib import Path
 
 import chromadb
+from chromadb.errors import NotFoundError
 
 from rag.constants import COLLECTION, get_embedding_function
 
@@ -113,7 +114,9 @@ def retrieve(
 
     Returns:
         List of ``Hit``, ordered by relevance (best first).  Returns an empty
-        list if the collection is empty or missing.
+        list if the collection is empty or missing.  If the cached collection
+        handle is stale (``rag.ingest`` rebuilt the collection in another
+        process), the cache is refreshed and the query retried once.
     """
     db = str(db_path or DEFAULT_DB)
 
@@ -125,6 +128,16 @@ def retrieve(
 
     try:
         res = col.query(query_texts=[question], n_results=top_k)
+    except NotFoundError:
+        # ingest 在其它进程重建集合后，缓存句柄指向已删除的 UUID：
+        # 清缓存按名字重取新集合，重试一次；仍失败则按原逻辑降级返回空
+        logger.warning("Cached collection handle is stale (collection rebuilt?), refreshing and retrying once")
+        invalidate_cache()
+        try:
+            res = _get_collection(db).query(query_texts=[question], n_results=top_k)
+        except Exception:
+            logger.exception("Chroma query failed for: %s", question[:200])
+            return []
     except Exception:
         logger.exception("Chroma query failed for: %s", question[:200])
         return []

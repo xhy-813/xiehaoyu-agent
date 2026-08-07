@@ -13,6 +13,7 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
+from chromadb.errors import NotFoundError
 
 from rag.ingest import (
     chunk_markdown,
@@ -337,6 +338,49 @@ class TestRetrieve:
             mock_col.return_value.query.side_effect = RuntimeError("query failed")
             hits = retrieve("query")
             assert hits == []
+
+    def test_retries_once_after_collection_rebuilt(self):
+        """ingest 在其它进程重建集合后，缓存句柄指向已删除的 UUID（NotFoundError）：
+        应自动清缓存、按名字重取新集合并重试一次，调用方无感知。"""
+        stale = MagicMock()
+        stale.query.side_effect = NotFoundError("Collection [old-uuid] does not exist.")
+        fresh = MagicMock()
+        fresh.query.return_value = {
+            "documents": [["chunk1"]],
+            "metadatas": [[{"source": "a.md", "heading": "H1"}]],
+            "distances": [[0.2]],
+        }
+
+        with patch("rag.retriever._get_collection") as mock_get:
+            mock_get.side_effect = [stale, fresh]
+            hits = retrieve("query", top_k=3, min_similarity=0.0)
+
+        assert len(hits) == 1
+        assert hits[0].content == "chunk1"
+        assert stale.query.call_count == 1
+        assert fresh.query.call_count == 1
+        assert mock_get.call_count == 2
+
+    def test_returns_empty_when_retry_also_fails(self):
+        """刷新后重取仍失败（如集合尚未重建完）：按原逻辑降级返回空列表。"""
+        stale = MagicMock()
+        stale.query.side_effect = NotFoundError("gone")
+
+        with patch("rag.retriever._get_collection") as mock_get:
+            mock_get.side_effect = [stale, NotFoundError("still gone")]
+            hits = retrieve("query")
+
+        assert hits == []
+        assert mock_get.call_count == 2
+
+    def test_no_retry_on_non_not_found_error(self):
+        """非 NotFoundError（如磁盘错误）不触发刷新重试，直接降级。"""
+        with patch("rag.retriever._get_collection") as mock_get:
+            mock_get.return_value.query.side_effect = RuntimeError("disk error")
+            hits = retrieve("query")
+
+        assert hits == []
+        assert mock_get.call_count == 1
 
 
 # ── count() tests ─────────────────────────────────────────────

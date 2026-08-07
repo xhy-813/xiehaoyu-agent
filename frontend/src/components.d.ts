@@ -38,6 +38,7 @@ declare module 'vue' {
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
     SectionHeading: typeof import('./components/portfolio/SectionHeading.vue')['default']
+    SessionSidebar: typeof import('./components/chat/SessionSidebar.vue')['default']
     SiteFooter: typeof import('./components/portfolio/SiteFooter.vue')['default']
     SiteSidebar: typeof import('./components/portfolio/SiteSidebar.vue')['default']
     WelcomeScreen: typeof import('./components/chat/WelcomeScreen.vue')['default']

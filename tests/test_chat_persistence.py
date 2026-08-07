@@ -4,7 +4,6 @@ import os
 os.environ["SKIP_CONFIG_VALIDATION"] = "1"  # 与 test_public_chat.py 相同：导入 app 前设置
 
 import json
-import time
 import uuid
 
 import pytest

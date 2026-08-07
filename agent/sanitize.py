@@ -58,3 +58,16 @@ def sanitize_input(text: str) -> str:
             )
 
     return cleaned
+
+
+def sanitize_history(text: str) -> str:
+    """历史消息注入前的轻量筛查（设计文档 §6，2026-08-07 终审决策）。
+
+    与 sanitize_input 的区别：不剥代码块（assistant 历史可能含 SQL 代码块）、
+    不抛异常——命中注入模式时整条替换为占位符。仅用于服务端拼装的历史上下文，
+    落库内容仍是原文（回放保真不受影响）。
+    """
+    for pattern in _INJECTION_PATTERNS:
+        if pattern.search(text):
+            return "[历史内容已过滤]"
+    return text

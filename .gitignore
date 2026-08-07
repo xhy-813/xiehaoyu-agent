@@ -24,8 +24,6 @@ rag/data/models/
 chatbi/data/*.db
 # Olist 原始 CSV（~120MB，仅用于构建 SQLite）
 data/olist数据集/
-# 个人知识库（含个人信息，不入公开仓库）
-data/知识库/
 # 数据集打包归档（44MB，仅用于传输备份）
 data.zip
 Xiehaoyu-Agent/archive/

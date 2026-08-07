@@ -57,6 +57,9 @@ md.renderer.rules.link_open = function (tokens, idx, options, env, self) {
       tokens[idx].attrSet('title', `[blocked: ${lower.slice(0, 40)}]`)
     }
   }
+  // 外部链接新窗口打开，避免跳出聊天页丢失会话
+  tokens[idx].attrSet('target', '_blank')
+  tokens[idx].attrSet('rel', 'noopener')
   return defaultLinkRender(tokens, idx, options, env, self)
 }
 

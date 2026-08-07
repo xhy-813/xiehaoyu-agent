@@ -44,6 +44,21 @@ data: [DONE]
 
 存活检查返回 `{"status": "ok"}`；就绪检查额外验证 `DEEPSEEK_API_KEY` 已配置。
 
+### 会话 API
+
+所有 `/api/sessions` 端点均需携带 `X-User-Id` 请求头（UUID 格式），缺失或无效返回 400，非本人会话返回 403。
+
+| 端点 | 方法 | 说明 |
+| --- | --- | --- |
+| `/api/sessions` | POST | 创建新会话 → `{"id": "<uuid>"}` |
+| `/api/sessions` | GET | 列出当前用户的所有会话（按更新时间倒序） |
+| `/api/sessions/search?q=` | GET | 按标题或消息内容搜索会话 |
+| `/api/sessions/{id}` | GET | 获取会话详情（含消息列表） |
+| `/api/sessions/{id}` | PATCH | 重命名会话（`{"title": "..."}`） |
+| `/api/sessions/{id}` | DELETE | 删除会话（级联删除消息） |
+
+实现细节见 [routers/sessions.py](app/routers/sessions.py)，会话存储与摘要机制见 [services/](../services/) 模块。
+
 ## 限流
 
 [rate_limit.py](app/deps/rate_limit.py)，两道闸门（先查 IP，被拒请求不消耗全局名额）：

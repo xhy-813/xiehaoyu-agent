@@ -7,10 +7,11 @@
 | 文件 | 版本 | 用途 | 引用方 |
 | --- | --- | --- | --- |
 | [system_persona.md](system_persona.md) | 1.1.0 | Agent 核心人设：第一人称、回答风格、知识库说明、安全边界 | `introduce_me.py`（system）+ `graph.py` finalize 润色 |
-| [planner.md](planner.md) | 1.2.0 | Planner 决策：工具清单、选择规则、失败恢复、安全规则 | `planner.py`（system） |
+| [planner.md](planner.md) | 1.3.0 | Planner 决策：工具清单、选择规则、失败恢复、安全规则、会话记忆注入 | `planner.py`（system） |
 | [introduce_me.md](introduce_me.md) | 1.2.0 | RAG 回答模板：检索片段 + 格式约束 + 自我介绍模板 | `introduce_me.py`（user 模板） |
 | [text2sql.md](text2sql.md) | 1.4.0 | Text2SQL：质量规范、COUNT/LIMIT/JOIN/长表规则、反面示例 | `query_data.py`（拆分 system + user） |
 | [explain.md](explain.md) | 1.2.0 | 数据解读：洞察要求、Olist 业务背景、正反面示例 | `explain_result.py`（拆分 system + user） |
+| [summary.md](summary.md) | 1.0.0 | 会话摘要：把对话历史压缩为简洁中文摘要 | `summarizer.py` |
 
 ## 结构约定（改动时务必注意）
 
@@ -21,12 +22,14 @@
 | text2sql.md | `【系统角色】` `【安全规则】` | 两者之间 → system；`【安全规则】`起 → user 模板 |
 | explain.md | `【系统角色】` `【用户问题】` | 两者之间 → system；`【用户问题】`起 → user 模板 |
 | introduce_me.md | `【自我介绍模板】` | 非自我介绍类问题时该段被裁掉，节省约 200 token |
+| summary.md | `【系统角色】` `【历史摘要】` | 两者之间 → system；其余 → user 模板 |
 
 占位符（`.format()` 注入，花括号不能删）：
 
 - text2sql.md：`{schema}` `{few_shots}` `{question}`
 - introduce_me.md：`{context}` `{question}`
 - explain.md：`{question}` `{sql}` `{preview}`
+- summary.md：`{old_summary}` `{new_dialogue}`
 
 ## 编辑规范
 

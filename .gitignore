@@ -16,6 +16,9 @@ env/
 
 # Data & models
 *.db
+# SQLite WAL 副产物
+*.db-wal
+*.db-shm
 *.sqlite
 *.sqlite3
 rag/data/chroma/

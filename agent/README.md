@@ -74,11 +74,11 @@ System prompt 在 [prompts/planner.md](../prompts/planner.md)，要求严格输�
 from agent.graph import run, stream_run
 
 # 同步（CLI / 测试）
-result = run("2018 年每月订单数，帮我画个图")
+result = run("2018 年每月订单数，帮我画个图", history_text="（可选）会话记忆文本")
 print(result["answer"], result["steps"])
 
 # 异步流式（FastAPI SSE，见 backend/）
-async for event in stream_run("介绍一下你自己"):
+async for event in stream_run("介绍一下你自己", history_text="（可选）会话记忆文本"):
     print(event["type"], event["data"])
 ```
 

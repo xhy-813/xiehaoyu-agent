@@ -322,6 +322,13 @@ sudo ./deploy.sh                     # 或 sudo ./deploy.sh your-domain.com（�
 | `EMBED_API_BASE`       | `https://open.bigmodel.cn/api/paas/v4` | Embedding API 地址                                           |
 | `EMBED_MODEL_NAME`     | `embedding-3`                          | Embedding 模型名称                                           |
 | `EMBED_DIMENSIONS`     | `1024`                                 | 向量维度（256/512/1024/2048，切换后须重建知识库）            |
+| `MEMORY_RECENT_TURNS` | `5` | 上下文携带的最近轮数 |
+| `MEMORY_SUMMARY_TRIGGER_TURNS` | `10` | 触发摘要的最小总轮数 |
+| `MEMORY_SUMMARY_MIN_NEW_TURNS` | `3` | 距上次摘要的最小新增轮数 |
+| `MEMORY_MAX_SESSIONS_PER_USER` | `50` | 单用户会话上限 |
+| `MEMORY_MAX_AGE_DAYS` | `30` | 会话过期天数 |
+| `MEMORY_CLEANUP_INTERVAL_HOURS` | `6` | 清理任务间隔 |
+| `SUMMARIZER_TEMPERATURE` | `0.3` | 摘要 LLM 温度 |
 
 ## 编码规范
 

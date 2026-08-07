@@ -57,6 +57,15 @@ class Settings:
     rag_temperature: float = _get_float("RAG_TEMPERATURE", "0.3")
     explain_temperature: float = _get_float("EXPLAIN_TEMPERATURE", "0.3")
 
+    # 对话记忆持久化（功能一，设计文档 §9；全部有安全默认值）
+    memory_recent_turns: int = _get_int("MEMORY_RECENT_TURNS", "5")
+    memory_summary_trigger_turns: int = _get_int("MEMORY_SUMMARY_TRIGGER_TURNS", "10")
+    memory_summary_min_new_turns: int = _get_int("MEMORY_SUMMARY_MIN_NEW_TURNS", "3")
+    memory_max_sessions_per_user: int = _get_int("MEMORY_MAX_SESSIONS_PER_USER", "50")
+    memory_max_age_days: int = _get_int("MEMORY_MAX_AGE_DAYS", "30")
+    memory_cleanup_interval_hours: int = _get_int("MEMORY_CLEANUP_INTERVAL_HOURS", "6")
+    summarizer_temperature: float = _get_float("SUMMARIZER_TEMPERATURE", "0.3")
+
 
 def _validate() -> None:
     """Refuse to start with well-known insecure default secrets."""

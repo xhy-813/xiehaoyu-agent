@@ -123,6 +123,33 @@ class TestMaybeSummarize:
         assert sid not in summarizer._in_progress  # 并发标记必须清除
         assert store.get_session(sid)["summary"] is None
 
+    def test_concurrent_calls_only_one_summarizes(self, store):
+        """并发防护：两个协程同 session 并发，只有一个真正生成摘要（修复 TOCTOU）。"""
+        import time as _time
+
+        sid = store.create_session("u")
+        self._fill(store, sid, 12)
+
+        class _SlowCompletions:
+            def create(self, model, messages, temperature):
+                _time.sleep(0.2)
+                return SimpleNamespace(
+                    choices=[SimpleNamespace(message=SimpleNamespace(content="并发摘要"))]
+                )
+
+        slow = SimpleNamespace(chat=SimpleNamespace(completions=_SlowCompletions()))
+
+        async def run_two():
+            return await asyncio.gather(
+                summarizer.maybe_summarize(sid, client=slow),
+                summarizer.maybe_summarize(sid, client=slow),
+            )
+
+        results = asyncio.run(run_two())
+        assert sorted(results) == [False, True]
+        assert store.get_session(sid)["summary"] == "并发摘要"
+        assert sid not in summarizer._in_progress
+
 
 class TestGenerateTitle:
     def test_generates_title(self, store):

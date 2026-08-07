@@ -81,6 +81,7 @@ async def maybe_summarize(session_id: str, client=None) -> bool:
     """满足触发条件时后台生成摘要。并发防护：同 session 进行中则跳过。"""
     if session_id in _in_progress:
         return False
+    _in_progress.add(session_id)  # 紧邻 check，无 await 间隔——事件循环单线程保证原子性
     try:
         sess = await asyncio.to_thread(session_store.get_session, session_id)
         if sess is None:
@@ -92,48 +93,45 @@ async def maybe_summarize(session_id: str, client=None) -> bool:
         if not should_summarize(total, new):
             return False
 
-        _in_progress.add(session_id)
-        try:
-            msgs = await asyncio.to_thread(
-                session_store.list_messages_after, session_id, sess["summary_upto"] or 0
-            )
-            if not msgs:
-                return False
-            new_dialogue = "\n".join(
-                f"{'用户' if m['role'] == 'user' else '助手'}: {_clean_history_content(m['content'])}"
-                for m in msgs
-            )
-            system, template = _load_summary_prompt()
-            llm = client or get_client()
-            resp = await asyncio.to_thread(
-                llm.chat.completions.create,
-                model=settings.deepseek_model,
-                messages=[
-                    {"role": "system", "content": system},
-                    {
-                        "role": "user",
-                        "content": template.format(
-                            old_summary=sess["summary"] or "(无)",
-                            new_dialogue=new_dialogue,
-                        ),
-                    },
-                ],
-                temperature=settings.summarizer_temperature,
-            )
-            summary = (resp.choices[0].message.content or "").strip()
-            if not summary:
-                return False
-            await asyncio.to_thread(
-                session_store.update_summary, session_id, summary, msgs[-1]["id"]
-            )
-            return True
-        finally:
-            _in_progress.discard(session_id)
+        msgs = await asyncio.to_thread(
+            session_store.list_messages_after, session_id, sess["summary_upto"] or 0
+        )
+        if not msgs:
+            return False
+        new_dialogue = "\n".join(
+            f"{'用户' if m['role'] == 'user' else '助手'}: {_clean_history_content(m['content'])}"
+            for m in msgs
+        )
+        system, template = _load_summary_prompt()
+        llm = client or get_client()
+        resp = await asyncio.to_thread(
+            llm.chat.completions.create,
+            model=settings.deepseek_model,
+            messages=[
+                {"role": "system", "content": system},
+                {
+                    "role": "user",
+                    "content": template.format(
+                        old_summary=sess["summary"] or "(无)",
+                        new_dialogue=new_dialogue,
+                    ),
+                },
+            ],
+            temperature=settings.summarizer_temperature,
+        )
+        summary = (resp.choices[0].message.content or "").strip()
+        if not summary:
+            return False
+        await asyncio.to_thread(
+            session_store.update_summary, session_id, summary, msgs[-1]["id"]
+        )
+        return True
     except Exception:
         # 摘要失败静默，下一轮再试（设计文档 §10）
         logger.exception("Summary generation failed for session %s", session_id)
-        _in_progress.discard(session_id)
         return False
+    finally:
+        _in_progress.discard(session_id)
 
 
 async def generate_title(session_id: str, question: str, answer: str, client=None) -> bool:

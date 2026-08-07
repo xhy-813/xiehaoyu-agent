@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging.config
 import sys
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI
@@ -49,12 +50,20 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from configs.settings import settings  # noqa: E402
-from backend.app.routers import chat  # noqa: E402
+from backend.app.routers import chat, sessions  # noqa: E402
+from backend.app.services import session_store  # noqa: E402
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    session_store.init_store()
+    yield
+
 
 app = FastAPI(
     title="Xiehaoyu-Agent API",
     description="个人智能体与 ChatBI 系统后端",
     version="0.1.0",
+    lifespan=lifespan,
 )
 
 # ── CORS (allow frontend dev server) ──────────────────────
@@ -63,12 +72,13 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
     allow_credentials=True,
-    allow_methods=["GET", "POST"],
-    allow_headers=["Authorization", "Content-Type"],
+    allow_methods=["GET", "POST", "PATCH", "DELETE"],
+    allow_headers=["Authorization", "Content-Type", "X-User-Id"],
 )
 
 # ── Routers ───────────────────────────────────────────────
 app.include_router(chat.router)
+app.include_router(sessions.router)
 
 
 @app.get("/api/health")

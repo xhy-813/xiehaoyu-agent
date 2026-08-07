@@ -112,24 +112,24 @@ def mock_client() -> MagicMock:
 
 class TestBuildPrompt:
     def test_includes_schema(self):
-        prompt = _build_prompt("2018 年每月订单数")
-        assert "customers" in prompt
-        assert "orders" in prompt
-        assert "order_items" in prompt
+        system_role, user_prompt = _build_prompt("2018 年每月订单数")
+        assert "customers" in user_prompt
+        assert "orders" in user_prompt
+        assert "order_items" in user_prompt
 
     def test_includes_few_shots(self):
-        prompt = _build_prompt("2018 年每月订单数")
-        assert "2018 年每月的订单数" in prompt
-        assert "strftime" in prompt
+        system_role, user_prompt = _build_prompt("2018 年每月订单数")
+        assert "2018 年每月的订单数" in user_prompt
+        assert "strftime" in user_prompt
 
     def test_includes_user_question(self):
-        prompt = _build_prompt("2018 年每月订单数")
-        assert "2018 年每月订单数" in prompt
+        system_role, user_prompt = _build_prompt("2018 年每月订单数")
+        assert "2018 年每月订单数" in user_prompt
 
     def test_includes_quality_rules(self):
-        prompt = _build_prompt("任意问题")
-        assert "SQL 编写规范" in prompt
-        assert "反面示例" in prompt
+        system_role, user_prompt = _build_prompt("任意问题")
+        assert "SQL 编写规范" in user_prompt
+        assert "反面示例" in user_prompt
 
 
 # ── query_data – success path ─────────────────────────────────

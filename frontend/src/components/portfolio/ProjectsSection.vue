@@ -3,14 +3,27 @@
     <SectionHeading num="03." title="项目" />
     <div class="proj-grid stagger">
       <article v-for="p in projects" :key="p.id" class="proj-card" v-reveal>
-        <div class="proj-thumb" :style="{ background: p.thumb }" aria-hidden="true">
+        <a
+          v-if="p.link"
+          :href="p.link"
+          target="_blank"
+          rel="noopener"
+          class="proj-thumb"
+          :style="p.image ? undefined : { background: p.thumb }"
+          :title="p.linkLabel || '查看项目'"
+          :aria-label="p.linkLabel || '查看项目'"
+        >
+          <img v-if="p.image" :src="p.image" :alt="p.title" class="proj-thumb-img" loading="lazy">
+          <span v-else class="proj-thumb-icon">{{ p.icon }}</span>
+        </a>
+        <div v-else class="proj-thumb" :style="{ background: p.thumb }" aria-hidden="true">
           <span class="proj-thumb-icon">{{ p.icon }}</span>
         </div>
         <div class="proj-info">
           <div class="proj-title-row">
             <h3 class="proj-title">{{ p.title }}</h3>
             <span v-if="p.featured" class="proj-badge">你正在使用它</span>
-            <a v-if="p.link" :href="p.link" target="_blank" rel="noopener" class="proj-link" aria-label="查看项目">↗</a>
+            <a v-if="p.link" :href="p.link" target="_blank" rel="noopener" class="proj-link" :title="p.linkLabel || '查看项目'" :aria-label="p.linkLabel || '查看项目'">↗</a>
           </div>
           <p class="proj-desc">{{ p.description }}</p>
           <span class="proj-stat">
@@ -57,11 +70,22 @@ import { projects } from '@/data/profile'
   display: flex;
   align-items: center;
   justify-content: center;
+  overflow: hidden;
+  text-decoration: none;
   /* v5 手法：默认去饱和，hover 恢复全彩 */
   filter: saturate(0.55) contrast(1.02);
   transition: filter 0.3s ease;
 }
 .proj-card:hover .proj-thumb { filter: saturate(1) contrast(1); }
+.proj-thumb-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center top;
+  display: block;
+  transition: transform 0.3s ease;
+}
+.proj-card:hover .proj-thumb-img { transform: scale(1.04); }
 .proj-thumb-icon {
   font-size: 22px;
   opacity: 0.4;

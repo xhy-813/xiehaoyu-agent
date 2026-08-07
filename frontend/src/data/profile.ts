@@ -5,11 +5,13 @@ export interface Project {
   id: string
   title: string
   description: string
-  icon: string        // 缩略图占位 emoji
-  thumb: string       // 缩略图渐变底（CSS）
+  icon: string        // 缩略图占位 emoji（无 image 时兜底）
+  thumb: string       // 缩略图渐变底（CSS，无 image 时兜底）
+  image?: string      // 项目截图（import 的静态资源，优先于 icon/thumb）
   stat: string        // 一行关键指标（星标行）
   tags: string[]
   link?: string
+  linkLabel?: string  // link 悬停提示（如「查看完整报告」）
   featured?: boolean
 }
 
@@ -43,8 +45,13 @@ export const skillsFlat: string[] = [
   'FastAPI', 'Vue 3', 'Tableau / FineBI', 'ChromaDB', 'DeepSeek / Claude', 'Git / Docker',
 ]
 
-export const projects: Project[] = [
-  {
+// 项目截图（源文件在 data/作品集图片及链接/，压缩为 WebP 后入库）
+import douyinSeedingImg from '@/assets/projects/douyin-seeding.webp'
+import taobaoRfmImg from '@/assets/projects/taobao-rfm.webp'
+import stockSentimentImg from '@/assets/projects/stock-sentiment.webp'
+import k12DatawarehouseImg from '@/assets/projects/k12-datawarehouse.webp'
+
+export const projects: Project[] = [  {
     id: 'xiehaoyu-agent',
     title: 'Xiehaoyu-Agent',
     description:
@@ -62,8 +69,11 @@ export const projects: Project[] = [
       '对 447.5 万投放费用、1.2 亿声量做深度归因分析。竞品对标转化率达行业均值 6 倍、单位成本仅行业 1/12；发现 34% 达人单位转化成本超 100 元/人，提出小博主优先策略并建立实时监控看板。',
     icon: '📊',
     thumb: 'linear-gradient(135deg, #2d1f3d, #151020)',
+    image: douyinSeedingImg,
     stat: '447.5w 投放 · 1.2 亿声量',
     tags: ['Excel', 'FineBI', '星图数据', '漏斗分析', '归因分析'],
+    link: 'https://jsu-sdais.feishu.cn/wiki/BMRDwePDIic0KZkQ23GcXmNZnnh',
+    linkLabel: '查看完整复盘报告（飞书）',
   },
   {
     id: 'taobao-rfm',
@@ -72,18 +82,24 @@ export const projects: Project[] = [
       '基于用户行为数据构建 RFM 模型，划分 8 类用户群体。发现浏览到购买转化率仅 9.47%、82.65% 商品仅被购买一次，针对五类重点人群输出差异化策略组合。',
     icon: '📈',
     thumb: 'linear-gradient(135deg, #1f2d3d, #0f1820)',
+    image: taobaoRfmImg,
     stat: '预估 ROI +33.5%',
     tags: ['Python', 'Pandas', 'RFM 模型', 'Seaborn', 'Matplotlib'],
+    link: 'https://jsu-sdais.feishu.cn/wiki/EpWLwRxFei7VzcknQDRcYBIinxd',
+    linkLabel: '查看完整分析报告（飞书）',
   },
   {
     id: 'k12-datawarehouse',
-    title: 'K12 教育 Hive 数仓与 PowerBI 看板',
+    title: 'K12 线上教育场景数据仓库开发与经营分析',
     description:
       '基于 50 万条 K12 订单数据搭建 ODS→DWD→DWS→DIM 四层 Hive 数仓，解决联报课程业绩归属问题，Hive 调优整体提速 80%，DataX 对接 PowerBI 交付 6 页经营看板。',
     icon: '🏫',
     thumb: 'linear-gradient(135deg, #1a2a4a, #0d1a30)',
+    image: k12DatawarehouseImg,
     stat: '50 万条订单 · ETL 提速 80% · 存储减少 75%',
     tags: ['Hive', 'HDFS', 'DataX', 'MySQL', 'PowerBI', 'DAX', 'Java UDF', 'Shell'],
+    link: 'https://jsu-sdais.feishu.cn/wiki/Qlm7wCH7miaCfAk4zZec1b58nxg',
+    linkLabel: '查看经营分析看板（飞书）',
   },
   {
     id: 'stock-sentiment',
@@ -92,8 +108,11 @@ export const projects: Project[] = [
       '采集 3.2 万条股吧评论，人工标注 2500 条样本微调 BERT 中文金融情感分类器（准确率 90%+），构建日度情绪指数并验证与沪深 300 的相关性。',
     icon: '💹',
     thumb: 'linear-gradient(135deg, #1d3a2f, #0d201a)',
+    image: stockSentimentImg,
     stat: '3.2 万条评论 · 准确率 90%+',
     tags: ['Python', 'BERT', 'NLP', 'Scrapy', 'StatsModels'],
+    link: 'https://b.datav.run/share/page/a51917cdc74ffa315e716ec319c15f90',
+    linkLabel: '查看 A 股数据看板（DataV）',
   },
 ]
 
@@ -103,13 +122,13 @@ export const experiences: Experience[] = [
     role: '数据实习生',
     period: '2026.04 — 2026.08',
     desc: '基于 DataPipeline 分层架构打通多源 API 采集清洗入库全链路，覆盖国内外十万余条数据；设计四层数据完整性评估脚本并搭建 FineBI 实时看板；对 POI 匹配失败案例做聚类归因，定位根因后准确率提升 62%；基于千问大模型搭建「生成→验证→重生成」AI 清洗流程。',
-    tags: ['Python', 'DataPipeline', 'FineBI', '归因分析', '千问大模型'],
+    tags: ['Python', 'DataPipeline', 'FineBI', 'ETL', '大模型应用'],
   },
   {
     company: '吉首大学',
-    role: '本科在读',
+    role: '数据科学与大数据技术',
     period: '2023.09 — 2027.06',
-    desc: '数据科学与大数据技术专业，专业排名前 5%。核心课程涵盖数据结构、数据库原理、机器学习、分布式计算（Hadoop / Spark）、数据可视化等。参与数学建模、数据分析、Kaggle 竞赛，多次获得校级和省级奖项。',
-    tags: ['Hadoop', 'Spark', '机器学习', '数学建模'],
+    desc: '专业排名前 5%（GPA 3.7）；连续三年获一等奖学金，并获国家励志奖学金；全国大学生数学建模竞赛省级一等奖、计算机设计大赛中南赛区二等奖。核心课程涵盖应用统计学、数据清洗与可视化、数据仓库、分布式计算（Hadoop / Spark）等。',
+    tags: ['数学建模', '数据仓库','数据清洗与可视化', 'Hadoop' , 'Spark'],
   },
 ]

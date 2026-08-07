@@ -1,9 +1,7 @@
 """Ingest personal knowledge-base markdown into a Chroma collection.
 
 用法：
-    python -m rag.ingest \\
-        --src "data/知识库" \\
-        --db  rag/data/chroma
+    python -m rag.ingest --src "data/知识库"  --db  rag/data/chroma  
 
 - 扫描以下顶层目录下所有 .md：简历, 自我介绍, 常见问题, 项目, 工作经历
 - 显式排除：secrets/、.git/、.agents/、.claude/、.codex/、.workbuddy/

@@ -39,6 +39,13 @@ export interface SSECallbacks {
   onDone?: () => void
 }
 
+export interface SSEOptions {
+  /** 会话 ID；调用方（chat store）负责先 ensureSession 再传入 */
+  sessionId?: string
+}
+
+import { getUserId } from './user'
+
 const SSE_TIMEOUT_MS = 120_000
 const MAX_RETRIES = 3
 const INITIAL_RETRY_DELAY_MS = 1000
@@ -47,6 +54,7 @@ async function _doStream(
   question: string,
   callbacks: SSECallbacks,
   signal?: AbortSignal,
+  options: SSEOptions = {},
 ): Promise<void> {
   const controller = new AbortController()
   const timeoutId = setTimeout(() => controller.abort(), SSE_TIMEOUT_MS)
@@ -60,8 +68,9 @@ async function _doStream(
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'X-User-Id': getUserId(),
       },
-      body: JSON.stringify({ question }),
+      body: JSON.stringify({ question, session_id: options.sessionId ?? null }),
       signal: controller.signal,
     })
 
@@ -128,6 +137,7 @@ export async function sseChatStream(
   question: string,
   callbacks: SSECallbacks,
   signal?: AbortSignal,
+  options: SSEOptions = {},
 ): Promise<void> {
   let lastError = ''
 
@@ -145,10 +155,13 @@ export async function sseChatStream(
       question,
       {
         ...callbacks,
-        onDone: () => { done = true },
+        // 终审修订：链式调用调用方 onDone——原写法 {...callbacks, onDone: ...} 会把
+        // 调用方传入的 onDone 整体覆盖（既有隐患），Task 10 的会话列表刷新依赖它
+        onDone: () => { done = true; callbacks.onDone?.() },
         onError: (msg) => { errorMsg = msg },
       },
       signal,
+      options,
     )
 
     if (done) return  // stream completed successfully

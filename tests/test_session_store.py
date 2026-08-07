@@ -60,6 +60,14 @@ class TestSessions:
         assert [h["id"] for h in hits] == [s2]
         assert store.search_sessions("user-a", "不存在") == []
 
+    def test_write_after_close_reinitializes(self, tmp_path, monkeypatch):
+        """_c() 惰性初始化经 init_store 需重入 _lock——RLock 防自死锁（评审修复）。"""
+        session_store.close_store()  # _conn = None
+        monkeypatch.setattr(session_store, "_DB_PATH", tmp_path / "lazy.db")
+        sid = session_store.create_session("u")  # 写路径持锁时 _c() 触发惰性 init
+        assert session_store.get_session(sid)["user_id"] == "u"
+        session_store.close_store()
+
 
 class TestMessages:
     def test_append_and_list(self, store):

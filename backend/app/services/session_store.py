@@ -17,7 +17,7 @@ from pathlib import Path
 _DB_PATH = Path(os.getenv("SESSIONS_DB_PATH", "data/sessions.db"))
 
 _conn: sqlite3.Connection | None = None
-_lock = threading.Lock()
+_lock = threading.RLock()
 
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS sessions (

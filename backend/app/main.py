@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging.config
 import sys
 from contextlib import asynccontextmanager
@@ -51,12 +52,14 @@ if str(ROOT) not in sys.path:
 
 from configs.settings import settings  # noqa: E402
 from backend.app.routers import chat, sessions  # noqa: E402
-from backend.app.services import session_store  # noqa: E402
+from backend.app.services import cleanup, session_store  # noqa: E402
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     session_store.init_store()
+    cleanup_task = asyncio.create_task(cleanup.cleanup_loop())
     yield
+    cleanup_task.cancel()
 
 
 app = FastAPI(

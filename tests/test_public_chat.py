@@ -30,7 +30,7 @@ def _clean_state():
     _daily_state["count"] = 0
 
 
-def _fake_stream(question: str):
+def _fake_stream(question: str, history_text: str = ""):
     async def gen():
         yield {"type": "final_answer", "node": "finalize", "data": {"answer": "ok"}}
     return gen()

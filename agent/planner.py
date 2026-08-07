@@ -87,8 +87,18 @@ def _extract_json(raw: str) -> dict:
         raise ValueError(f"Planner JSON has unmatched braces: {raw[:200]}")
 
 
-def plan(question: str, trace: list[dict], client: OpenAI | None = None) -> dict:
+def plan(
+    question: str,
+    trace: list[dict],
+    client: OpenAI | None = None,
+    history_text: str = "",
+) -> dict:
     """Call LLM to decide next action.
+
+    When ``history_text`` is non-empty it is injected as a separate
+    user message between the system prompt and the current question,
+    so the planner can resolve anaphora ("那 2017 年呢") without the
+    tools seeing the conversation history.
 
     Returns:
         {"action": "call", "tool": str, "args": dict}
@@ -114,12 +124,18 @@ def plan(question: str, trace: list[dict], client: OpenAI | None = None) -> dict
         f"请决定下一步动作。"
     )
 
+    messages = [
+        {"role": "system", "content": _load_planner_system()},
+    ]
+    if history_text:
+        # 会话记忆（摘要 + 最近 N 轮）作为独立 user 消息注入（设计文档 §6）；
+        # history_text 由服务端拼装，不过 sanitize
+        messages.append({"role": "user", "content": history_text})
+    messages.append({"role": "user", "content": user_msg})
+
     resp = client.chat.completions.create(
         model=settings.deepseek_model,
-        messages=[
-            {"role": "system", "content": _load_planner_system()},
-            {"role": "user", "content": user_msg},
-        ],
+        messages=messages,
         temperature=settings.planner_temperature,
     )
     raw = resp.choices[0].message.content or ""

@@ -45,6 +45,7 @@ class AgentState(TypedDict, total=False):
     next_action: str  # "call" | "finalize"
     next_tool: str
     next_args: dict
+    history_text: str  # 会话记忆（摘要 + 最近 N 轮），planner 注入用
 
 
 MAX_STEPS = settings.max_agent_steps
@@ -145,7 +146,11 @@ def planner_node(state: AgentState) -> dict:
     a ``finalize`` action so the UI always receives a response."""
     step = state.get("step", 0)
     try:
-        decision = plan(state["question"], state.get("trace", []))
+        decision = plan(
+            state["question"],
+            state.get("trace", []),
+            history_text=state.get("history_text", ""),
+        )
     except (APIError, ValueError, json.JSONDecodeError, RuntimeError) as exc:
         logger.exception("Planner failed")
         return {
@@ -250,7 +255,7 @@ def finalize_node(state: AgentState) -> dict:
     if _has_introduce_me(trace):
         answer = _polish_with_persona(answer, trace)
 
-    return {"final_answer": answer}
+    return {"final_answer": answer, "step": state.get("step", 0)}
 
 
 # ── Router ───────────────────────────────────────────────
@@ -334,7 +339,7 @@ def _serialize_artifact(artifact: dict | None) -> dict | None:
 # ── Streaming entry point ────────────────────────────────
 
 
-async def stream_run(question: str) -> AsyncIterator[dict]:
+async def stream_run(question: str, history_text: str = "") -> AsyncIterator[dict]:
     """Async streaming agent runner.
 
     Uses LangGraph's built-in ``astream()`` to yield one event per node
@@ -351,6 +356,7 @@ async def stream_run(question: str) -> AsyncIterator[dict]:
         "question": question,
         "trace": [],
         "step": 0,
+        "history_text": history_text,
     }
 
     async for event in _app.astream(initial_state, stream_mode="updates"):
@@ -396,7 +402,7 @@ async def stream_run(question: str) -> AsyncIterator[dict]:
 # ── Synchronous entry point (kept for backward compat) ──
 
 
-def run(question: str) -> dict:
+def run(question: str, history_text: str = "") -> dict:
     """Run the agent end-to-end.
 
     Returns:
@@ -406,6 +412,7 @@ def run(question: str) -> dict:
         "question": question,
         "trace": [],
         "step": 0,
+        "history_text": history_text,
     })
     return {
         "answer": result.get("final_answer", ""),

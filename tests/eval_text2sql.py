@@ -100,11 +100,10 @@ EVAL_CASES: list[dict] = [
     {
         "id": "E08",
         "level": "easy",
-        # "订单" → 去重统计 order_id，order_reviews 一笔订单可有多条评价行
-        "question": "评分为 5 分的订单有多少？",
+        # 808 审查 H3 换题（原题与 few_shot#8 重叠）：不同商品数去重统计
+        "question": "order_items 表里一共有多少个不同的商品（product_id）？",
         "gold_sql": (
-            "SELECT COUNT(DISTINCT order_id) AS cnt "
-            "FROM order_reviews WHERE review_score = 5;"
+            "SELECT COUNT(DISTINCT product_id) AS cnt FROM order_items;"
         ),
     },
     {
@@ -211,45 +210,55 @@ EVAL_CASES: list[dict] = [
     {
         "id": "M01",
         "level": "medium",
-        "question": "2018 年每个月的订单数（按月份升序）",
+        # 808 审查 H3 换题（原题与 few_shot#1 重叠）：周粒度时间分组。
+        # gold 修订：周数输出为整数（原 gold 的 '01' 零填充字符串是纯格式伪差异，
+        # 模型答案数值完全一致却判 FAIL）
+        "question": "2018 年每周的订单数（按周数升序）",
         "gold_sql": (
-            "SELECT strftime('%Y-%m', order_purchase_timestamp) AS month, "
+            "SELECT CAST(strftime('%W', order_purchase_timestamp) AS INTEGER) AS week, "
             "COUNT(*) AS order_cnt "
             "FROM orders WHERE order_purchase_timestamp LIKE '2018%' "
-            "GROUP BY month ORDER BY month;"
+            "GROUP BY week ORDER BY week;"
         ),
     },
     {
         "id": "M02",
         "level": "medium",
-        "question": "销量 top 5 的商品品类（用英文品类名，按销量降序）",
+        # 808 审查 H3 换题（原题与 few_shot#3 重叠）：评分过滤 + 品类 top-N
+        "question": "评分 4 分及以上订单数最多的 5 个商品品类（英文名，按订单数降序）",
         "gold_sql": (
-            "SELECT ct.product_category_name_english AS category, COUNT(*) AS item_cnt "
+            "SELECT ct.product_category_name_english AS category, "
+            "COUNT(DISTINCT oi.order_id) AS order_cnt "
             "FROM order_items oi "
             "JOIN products p ON p.product_id = oi.product_id "
             "JOIN category_translation ct ON ct.product_category_name = p.product_category_name "
-            "GROUP BY category ORDER BY item_cnt DESC LIMIT 5;"
+            "JOIN order_reviews r ON r.order_id = oi.order_id "
+            "WHERE r.review_score >= 4 "
+            "GROUP BY category ORDER BY order_cnt DESC LIMIT 5;"
         ),
     },
     {
         "id": "M03",
         "level": "medium",
-        "question": "各州（customer_state）的下单客户数（唯一自然人）top 10",
+        # 808 审查 H3 换题（原题与 few_shot#4 重叠）：城市维度卖家分布
+        "question": "卖家数量最多的 10 个城市（seller_city，按卖家数降序）",
         "gold_sql": (
-            "SELECT c.customer_state, COUNT(DISTINCT c.customer_unique_id) AS customer_cnt "
-            "FROM customers c JOIN orders o ON o.customer_id = c.customer_id "
-            "GROUP BY c.customer_state ORDER BY customer_cnt DESC LIMIT 10;"
+            "SELECT seller_city, COUNT(DISTINCT seller_id) AS seller_cnt "
+            "FROM sellers GROUP BY seller_city ORDER BY seller_cnt DESC LIMIT 10;"
         ),
     },
     {
         "id": "M04",
         "level": "medium",
-        "question": "已送达（delivered）订单的平均评分（保留 4 位小数）",
+        # 808 审查 H3 换题（原题与 few_shot#5 重叠）：品类运费均值 top-1
+        "question": "平均运费（freight_value 均值，保留 2 位小数）最高的商品品类是哪个（英文名）？",
         "gold_sql": (
-            "SELECT ROUND(AVG(r.review_score), 4) AS avg_score "
-            "FROM order_reviews r "
-            "JOIN orders o ON o.order_id = r.order_id "
-            "WHERE o.order_status = 'delivered';"
+            "SELECT ct.product_category_name_english AS category, "
+            "ROUND(AVG(oi.freight_value), 2) AS avg_freight "
+            "FROM order_items oi "
+            "JOIN products p ON p.product_id = oi.product_id "
+            "JOIN category_translation ct ON ct.product_category_name = p.product_category_name "
+            "GROUP BY category ORDER BY avg_freight DESC LIMIT 1;"
         ),
     },
     {
@@ -438,11 +447,13 @@ EVAL_CASES: list[dict] = [
     {
         "id": "M20",
         "level": "medium",
-        "question": "2017 年和 2018 年各自的订单数，按年份分组输出（每年一行）",
+        # 808 审查 H3 换题（原题与 few_shot#7 重叠）：年度 GMV 对比
+        "question": "2017 年和 2018 年各自的 GMV（商品 price 之和，每年一行，保留 2 位小数）",
         "gold_sql": (
-            "SELECT strftime('%Y', order_purchase_timestamp) AS year, COUNT(*) AS order_cnt "
-            "FROM orders "
-            "WHERE order_purchase_timestamp LIKE '2017%' OR order_purchase_timestamp LIKE '2018%' "
+            "SELECT strftime('%Y', o.order_purchase_timestamp) AS year, "
+            "ROUND(SUM(oi.price), 2) AS gmv "
+            "FROM orders o JOIN order_items oi ON oi.order_id = o.order_id "
+            "WHERE o.order_purchase_timestamp LIKE '2017%' OR o.order_purchase_timestamp LIKE '2018%' "
             "GROUP BY year ORDER BY year;"
         ),
     },
@@ -491,17 +502,26 @@ EVAL_CASES: list[dict] = [
     {
         "id": "H03",
         "level": "hard",
-        "question": "各英文品类的销量（item_cnt）、总收入（revenue）和平均评分（avg_score），按总收入降序取 top 10",
+        # 808 审查 H3 换题（原题与 few_shot#9 重叠）：客户分群人均消费对比。
+        # 首跑失败后题面消歧：指定金额口径（price 之和）与输出列名/取值，
+        # 与 H07 显式指定输出列的既有风格一致
+        "question": (
+            "复购客户（购买 2 次及以上）与一次性客户的人均消费金额（按商品 price 之和计算）"
+            "分别是多少（保留 2 位小数）？输出两列：customer_type（取值 repeat / one_time）、avg_spend"
+        ),
         "gold_sql": (
-            "SELECT ct.product_category_name_english AS category, "
-            "COUNT(oi.order_item_id) AS item_cnt, "
-            "ROUND(SUM(oi.price), 2) AS revenue, "
-            "ROUND(AVG(r.review_score), 4) AS avg_score "
-            "FROM order_items oi "
-            "JOIN products p ON p.product_id = oi.product_id "
-            "JOIN category_translation ct ON ct.product_category_name = p.product_category_name "
-            "JOIN order_reviews r ON r.order_id = oi.order_id "
-            "GROUP BY category ORDER BY revenue DESC LIMIT 10;"
+            "WITH cust AS ("
+            "  SELECT c.customer_unique_id, "
+            "         COUNT(DISTINCT o.order_id) AS order_cnt, "
+            "         SUM(oi.price) AS total_spend "
+            "  FROM customers c "
+            "  JOIN orders o ON o.customer_id = c.customer_id "
+            "  JOIN order_items oi ON oi.order_id = o.order_id "
+            "  GROUP BY c.customer_unique_id"
+            ") "
+            "SELECT CASE WHEN order_cnt >= 2 THEN 'repeat' ELSE 'one_time' END AS customer_type, "
+            "ROUND(AVG(total_spend), 2) AS avg_spend "
+            "FROM cust GROUP BY customer_type ORDER BY customer_type;"
         ),
     },
     {
@@ -523,28 +543,38 @@ EVAL_CASES: list[dict] = [
     {
         "id": "H05",
         "level": "hard",
-        "question": "首次购买客户数 vs 复购客户数（按 2018 年每月统计，月份升序）",
+        # 808 审查 H3 换题（原题与 few_shot#10 重叠）：配送时长分桶与评分关系。
+        # 首跑失败后修订：题面明确"整数天"口径与"一单一计"约定；
+        # gold 修正为按订单去重计数（原 gold 的 COUNT(*) 实为评价行数）
+        "question": (
+            "配送时长与评分的关系：按配送天数（整数天）分桶（0-7 天 / 8-15 天 / 16-30 天 / 30 天以上）"
+            "统计每桶的订单数（同一订单多条评价按一单计）和平均评分（保留 4 位小数）"
+        ),
         "gold_sql": (
-            "WITH customer_first AS ("
-            "  SELECT c.customer_unique_id, "
-            "         strftime('%Y-%m', MIN(o.order_purchase_timestamp)) AS first_month "
-            "  FROM customers c JOIN orders o ON o.customer_id = c.customer_id "
-            "  GROUP BY c.customer_unique_id"
+            "WITH delivery AS ("
+            "  SELECT o.order_id, "
+            "         CAST(julianday(o.order_delivered_customer_date) "
+            "              - julianday(o.order_purchase_timestamp) AS INTEGER) AS days "
+            "  FROM orders o "
+            "  WHERE o.order_status = 'delivered' "
+            "    AND o.order_delivered_customer_date IS NOT NULL"
             "), "
-            "monthly AS ("
-            "  SELECT strftime('%Y-%m', o.order_purchase_timestamp) AS month, "
-            "         c.customer_unique_id "
-            "  FROM customers c JOIN orders o ON o.customer_id = c.customer_id "
-            "  JOIN customer_first cf ON cf.customer_unique_id = c.customer_unique_id "
-            "  WHERE o.order_purchase_timestamp LIKE '2018%' "
-            "  GROUP BY month, c.customer_unique_id, cf.first_month"
+            "bucketed AS ("
+            "  SELECT order_id, days, "
+            "         CASE WHEN days <= 7 THEN '0-7天' "
+            "              WHEN days <= 15 THEN '8-15天' "
+            "              WHEN days <= 30 THEN '16-30天' "
+            "              ELSE '>30天' END AS bucket "
+            "  FROM delivery"
+            "), "
+            "order_avg AS ("
+            "  SELECT order_id, AVG(review_score) AS avg_score "
+            "  FROM order_reviews GROUP BY order_id"
             ") "
-            "SELECT m.month, "
-            "  COUNT(CASE WHEN m.month = cf.first_month THEN 1 END) AS first_time_customers, "
-            "  COUNT(CASE WHEN m.month > cf.first_month THEN 1 END) AS repeat_customers "
-            "FROM monthly m "
-            "JOIN customer_first cf ON cf.customer_unique_id = m.customer_unique_id "
-            "GROUP BY m.month ORDER BY m.month;"
+            "SELECT b.bucket, COUNT(*) AS order_cnt, "
+            "ROUND(AVG(oa.avg_score), 4) AS avg_score "
+            "FROM bucketed b LEFT JOIN order_avg oa ON oa.order_id = b.order_id "
+            "GROUP BY b.bucket ORDER BY MIN(b.days);"
         ),
     },
     {
@@ -610,13 +640,17 @@ EVAL_CASES: list[dict] = [
     {
         "id": "H10",
         "level": "hard",
-        # payment_type 列可选（WHERE 已限定 credit_card），但模型倾向于输出，gold 保持一致
-        "question": "各支付方式的分期付款分布：每种支付方式下，分期数（installments）各有多少笔，只取 credit_card，按分期数升序",
+        # 808 复审：题面显式指定输出列（与 H07 风格一致）——此前 gold 含
+        # payment_type 常量列（WHERE 已限定 credit_card），模型两可输出导致形状抖动
+        "question": (
+            "各支付方式的分期付款分布：只取 credit_card，统计分期数（installments）"
+            "各有多少笔支付记录，输出两列 installments、cnt，按分期数升序"
+        ),
         "gold_sql": (
-            "SELECT payment_type, payment_installments, COUNT(*) AS cnt "
+            "SELECT payment_installments AS installments, COUNT(*) AS cnt "
             "FROM order_payments "
             "WHERE payment_type = 'credit_card' "
-            "GROUP BY payment_type, payment_installments ORDER BY payment_installments;"
+            "GROUP BY payment_installments ORDER BY installments;"
         ),
     },
 ]

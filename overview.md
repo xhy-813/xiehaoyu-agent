@@ -144,7 +144,7 @@ START → planner → tool_router → introduce_me/query_data/visualize/explain_
 - [X] 跑基线准确率，针对错误 case 补充 few-shot、优化 prompt，再跑一次（共 8 轮迭代）
 - [ ] README 补齐：demo 截图/GIF
 
-**验收**：Text2SQL 准确率 96%（48/50），EASY 100% / MEDIUM 100% / HARD 80% ✅（目标 ≥70%）
+**验收**：Text2SQL 准确率 96%（48/50），EASY 100% / MEDIUM 95% / HARD 90% ✅（目标 ≥70%；2026-08-08 去泄漏换题后的无重叠基线）
 
 ## 后续迭代（MVP 之后）
 
@@ -197,6 +197,7 @@ START → planner → tool_router → introduce_me/query_data/visualize/explain_
 - 2026-08-05：提示词体系全面优化 + ChatMessage 拆分（MessageBubble + InlineResult）+ planner 空响应处理
 - 2026-08-06：移除 Streamlit UI 残留（app.py + ui/）+ planner 健壮性修复（空响应 fallback 路由、裸控制字符转义）
 - 2026-08-06：Text2SQL 评测 8 轮迭代：50 题基线 96%（EASY 100% / MEDIUM 100% / HARD 80%）；prompt v1.5、few-shot 扩至 10 组；评测器改为值指纹对齐、忽略列名
+- 2026-08-08：808 全项目审查整改（planner 解析回归、限流 XFF 绕过、SQL 执行护栏、中文注入模式、SSE 重试、知识库脱敏）；评测集去泄漏换题 8 道，无泄漏基线 96%（EASY 100% / MEDIUM 95% / HARD 90%）
 - 迭代计划：秋招前（2026-09）持续打磨
 
 ## 相关资源

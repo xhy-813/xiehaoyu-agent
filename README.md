@@ -311,6 +311,7 @@ sudo ./deploy.sh                     # 或 sudo ./deploy.sh your-domain.com（�
 | `DEEPSEEK_MODEL`       | `deepseek-v4-flash`                    | 模型名称                                                     |
 | `IP_HOURLY_QUOTA`      | `20`                                   | 每 IP 每小时提问次数上限                                     |
 | `GLOBAL_DAILY_QUOTA`   | `200`                                  | 全站每日提问总次数上限                                       |
+| `SESSIONS_IP_HOURLY_QUOTA` | `120`                              | 会话写端点（创建/改名/删除）每 IP 每小时上限                 |
 | `CORS_ORIGINS`         | `http://localhost:5173`                | 允许的前端地址（逗号分隔）                                   |
 | `MAX_AGENT_STEPS`      | `5`                                    | Agent 最大推理步数                                           |
 | `SQL_RETRY_MAX`        | `3`                                    | SQL 失败最大重试次数                                         |
@@ -394,6 +395,8 @@ pytest tests/ -v
 | 2026-08-05 | 提示词体系全面优化；ChatMessage 拆分为 MessageBubble + InlineResult                           |
 | 2026-08-06 | 移除 Streamlit UI 残留（app.py + ui/）；planner 健壮性修复（空响应 fallback、裸控制字符转义） |
 | 2026-08-06 | Text2SQL 评测优化：50 题基线 96%（48/50），EASY 100% / MEDIUM 100% / HARD 80%；prompt v1.5、few-shot 扩至 10 组 |
+| 2026-08-08 | 全项目审查（[808 报告](docs/808审查报告.md)）：修复 planner 多行 JSON 解析回归、限流 XFF 伪造绕过、SQL 执行护栏（拒 RECURSIVE + 语句超时 + 行数上限 + 只读连接）、中文注入模式、SSE 重试逻辑；知识库联系方式脱敏 |
+| 2026-08-08 | 评测集去泄漏：8 道与 few-shot 重叠题全部换题，无泄漏基线 96%（48/50），EASY 100% / MEDIUM 95% / HARD 90%；prompt v1.5.1 |
 
 ## 后续迭代
 
@@ -413,7 +416,7 @@ pytest tests/ -v
 **要点**：
 
 - 设计并实现多 Tool Agent 编排架构（介绍本人 / Text2SQL 查数 / 自动可视化 / 结果解读），基于 LangGraph 状态机驱动 LLM 自主规划调用链，最多 5 轮循环推理
-- Text2SQL 引擎：完整 schema + 10 组 few-shot prompt + sqlparse 语法校验 + 执行失败反馈自动重写（最多 3 轮），Olist 电商数据集（9 表关联，99441 行订单）；50 题基线准确率 96%（EASY 100% / MEDIUM 100% / HARD 80%）
+- Text2SQL 引擎：完整 schema + 10 组 few-shot prompt + sqlparse 语法校验 + 执行护栏（只读连接 / 语句超时 / 行数上限 / 禁递归 CTE）+ 失败反馈自动重写（最多 3 轮），Olist 电商数据集（9 表关联，99441 行订单）；50 题无泄漏基线准确率 96%（EASY 100% / MEDIUM 95% / HARD 90%，评测集与 few-shot 零重叠）
 - 构建 RAG 个人知识检索模块（BGE-large-zh-v1.5 嵌入 + ChromaDB），支持简历/项目文档热更新，回答附带来源引用
 - 前后端分离架构：FastAPI SSE 流式推送 + Vue 3 SPA（深/浅色主题）+ 按 IP 限流 + 6 种 Lottie 角色动画
 - 全链路公网部署（腾讯云轻量服务器），公开访问 + 按 IP 限流 + 全局日上限

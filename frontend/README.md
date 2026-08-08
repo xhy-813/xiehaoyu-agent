@@ -21,11 +21,14 @@ src/
 ├── App.vue                 # 根组件（Naive UI 主题配置）
 ├── router/index.ts         # / → PortfolioView，/chat → ChatView，其余重定向 /
 ├── stores/chat.ts          # 聊天状态机 + SSE 调度 + Lottie 动画状态
+├── stores/sessions.ts      # 会话列表/创建/重命名/删除/回放（X-User-Id 注入）
 ├── data/profile.ts         # 作品集静态文案（关于/经历/项目，改文案只动这里）
 ├── utils/
-│   ├── sse.ts              # SSE 客户端（fetch + ReadableStream 逐行解析）
-│   ├── markdown.ts         # markdown-it + highlight.js 渲染
+│   ├── sse.ts              # SSE 客户端（fetch + ReadableStream 逐行解析 + 错误分类重试）
+│   ├── markdown.ts         # markdown-it + highlight.js（核心库按需注册 6 种语言）渲染
 │   ├── artifact.ts         # 从 trace 中倒序查找最新 artifact
+│   ├── user.ts             # 匿名用户 ID（localStorage UUID v4）
+│   ├── time.ts             # 相对时间格式化
 │   ├── quick-questions.ts  # 欢迎屏快捷提问 chips 配置
 │   └── tool-constants.ts   # 工具中文标签 / 颜色 / 图表类型映射
 ├── composables/
@@ -43,7 +46,7 @@ src/
     │                       # ProjectsSection / ChatSection / SiteFooter /
     │                       # SectionHeading / MouseSpotlight
     ├── chat/               # ChatWidget / ChatMessage / MessageBubble /
-    │                       # InlineResult / WelcomeScreen / ChatInput
+    │                       # InlineResult / WelcomeScreen / ChatInput / SessionSidebar
     ├── shared/AnimatedAvatar.vue   # Lottie 角色动画容器
     └── result/ChartRenderer.vue    # Plotly 图表渲染
 ```
@@ -64,8 +67,9 @@ ChatInput → chat store.send() → sseChatStream() → POST /api/chat
 
 ### SSE 客户端（[utils/sse.ts](src/utils/sse.ts)）
 
-- 120 秒超时；网络类错误最多自动重试 3 次（指数退避 1s/2s/4s）。
-- 外部 `AbortSignal` 联动"停止生成"：中断后已生成内容保留，可一键重试。
+- 180 秒超时（覆盖后端多步 LLM + SQL 重试的最坏合法时长，Nginx `proxy_read_timeout` 300s 之内）。
+- 错误分类重试（`SSEStreamError.kind`）：只有**连接未建立**（`connect`）才自动重试（最多 3 次，指数退避 1s/2s/4s）；流中途断开（`stream`）与超时（`timeout`）**不重试**——后端可能已执行完部分步骤，重试会双倍消耗 LLM 额度；429 等应用层错误立即透传。
+- 外部 `AbortSignal` 联动"停止生成"：中断后已生成内容保留，可一键重试；超时与手动停止分别提示（不再混淆为"已取消"）。
 - 解析失败的单行只警告不崩溃（容忍畸形 JSON）。
 
 ### 结果展示

@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed, watch } from 'vue'
-import { sseChatStream, type Artifact, type SSEChatEvent } from '@/utils/sse'
+import { sseChatStream, SSEStreamError, type Artifact, type SSEChatEvent } from '@/utils/sse'
 import type { AvatarState } from '@/components/shared/AnimatedAvatar.vue'
 import { useSessionsStore } from './sessions'
 
@@ -171,12 +171,17 @@ export const useChatStore = defineStore('chat', () => {
         },
       }, abortController.value.signal, { sessionId })
     } catch (err: any) {
-      if (err.name === 'AbortError') {
-        assistantMsg.content = assistantMsg.content || '请求已取消'
-      } else if (err.message?.includes('timeout') || err.message?.includes('超时')) {
+      if (err instanceof SSEStreamError && err.kind === 'timeout') {
+        // 本地 120s 超时（后端可能仍在执行）：区别于用户主动停止（808 审查 M4）
         streamError.value = '请求超时'
         assistantMsg.content = '请求超时，请稍后重试。'
         assistantMsg.error = true
+      } else if (err instanceof SSEStreamError && err.kind === 'stream') {
+        streamError.value = '连接中断'
+        assistantMsg.content = '连接中断，请重试。'
+        assistantMsg.error = true
+      } else if (err.name === 'AbortError') {
+        assistantMsg.content = assistantMsg.content || '请求已取消'
       } else if (err.message?.includes('fetch') || err.message?.includes('network') || err.message?.includes('Network')) {
         streamError.value = '网络错误'
         assistantMsg.content = '网络连接失败，请检查网络后重试。'

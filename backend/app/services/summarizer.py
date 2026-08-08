@@ -10,7 +10,7 @@ import asyncio
 import logging
 from pathlib import Path
 
-from agent.llm_client import get_client
+from agent.llm_client import alogged_chat_create, get_async_client
 from agent.sanitize import sanitize_history
 from backend.app.services import session_store
 from configs.settings import settings
@@ -103,9 +103,9 @@ async def maybe_summarize(session_id: str, client=None) -> bool:
             for m in msgs
         )
         system, template = _load_summary_prompt()
-        llm = client or get_client()
-        resp = await asyncio.to_thread(
-            llm.chat.completions.create,
+        llm = client or get_async_client()
+        resp = await alogged_chat_create(
+            llm,
             model=settings.deepseek_model,
             messages=[
                 {"role": "system", "content": system},
@@ -118,6 +118,7 @@ async def maybe_summarize(session_id: str, client=None) -> bool:
                 },
             ],
             temperature=settings.summarizer_temperature,
+            caller="summarizer",
         )
         summary = (resp.choices[0].message.content or "").strip()
         if not summary:
@@ -140,9 +141,9 @@ async def generate_title(session_id: str, question: str, answer: str, client=Non
         sess = await asyncio.to_thread(session_store.get_session, session_id)
         if sess is None or sess["title"]:
             return False
-        llm = client or get_client()
-        resp = await asyncio.to_thread(
-            llm.chat.completions.create,
+        llm = client or get_async_client()
+        resp = await alogged_chat_create(
+            llm,
             model=settings.deepseek_model,
             messages=[
                 {
@@ -153,6 +154,7 @@ async def generate_title(session_id: str, question: str, answer: str, client=Non
                 }
             ],
             temperature=settings.summarizer_temperature,
+            caller="generate_title",
         )
         title = (resp.choices[0].message.content or "").strip()[:20]
         if not title:

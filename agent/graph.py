@@ -12,6 +12,7 @@ planner → tool_router → tools → planner (loop, max 5) → finalize
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 from pathlib import Path
@@ -22,11 +23,12 @@ import plotly.graph_objects as go
 from langgraph.graph import END, START, StateGraph
 from openai import APIError
 
-from agent.llm_client import get_client
+from agent.llm_client import alogged_chat_create, get_async_client
 from agent.planner import plan
-from agent.tools.explain_result import explain_result
-from agent.tools.introduce_me import introduce_me
-from agent.tools.query_data import query_data
+from agent.sanitize import InjectionDetected
+from agent.tools.explain_result import explain_result_async
+from agent.tools.introduce_me import introduce_me_async
+from agent.tools.query_data import query_data_async
 from agent.tools.visualize import visualize
 from configs.settings import settings
 
@@ -51,12 +53,12 @@ class AgentState(TypedDict, total=False):
 MAX_STEPS = settings.max_agent_steps
 
 # ── Tool registry (single source of truth for tool dispatch) ──
-
+# 808 审查 M1：节点为异步函数，LLM 调用可被取消（断连即中止计费）
 TOOLS: dict[str, Any] = {
-    "introduce_me": introduce_me,
-    "query_data": query_data,
+    "introduce_me": introduce_me_async,
+    "query_data": query_data_async,
     "visualize": visualize,
-    "explain_result": explain_result,
+    "explain_result": explain_result_async,
 }
 
 # Tool names used by router and graph builder — derived from the registry
@@ -69,7 +71,8 @@ _TOOL_NAMES = list(TOOLS.keys())
 def _summarize(tool: str, result: Any) -> str:
     """Short text summary of a tool result for planner context."""
     if tool == "introduce_me":
-        return getattr(result, "answer", str(result))[:800]
+        prefix = "(知识库检索故障，已指示诚实说明) " if getattr(result, "degraded", False) else ""
+        return prefix + getattr(result, "answer", str(result))[:800]
     if tool == "query_data":
         try:
             df = getattr(result, "df", None)
@@ -87,25 +90,25 @@ def _summarize(tool: str, result: Any) -> str:
     return str(result)[:800]
 
 
-def _run_tool(tool: str, args: dict, state: AgentState) -> dict:
+async def _run_tool(tool: str, args: dict, state: AgentState) -> dict:
     """Execute one tool, return state patch.
 
     Expected tool-level errors (APIError, SQLValidationError, etc.) are
     caught and recorded as error trace entries so the planner can decide
     whether to retry or finalize.  Programming errors (TypeError, NameError,
-    etc.) propagate normally.
+    etc.) propagate normally.  异步实现（M1）：LLM 调用可被任务取消中止。
     """
     question = args.get("question", state["question"])
     trace = state.get("trace", [])
 
     try:
         if tool == "introduce_me":
-            r = introduce_me(question)
+            r = await introduce_me_async(question)
             artifact = {"answer": r.answer, "citations": r.citations}
             return {"trace": trace + [{"tool": tool, "args": args, "summary": _summarize(tool, r), "artifact": artifact}]}
 
         if tool == "query_data":
-            r = query_data(question)
+            r = await query_data_async(question)
             artifact = {"sql": r.sql, "df": r.df}
             return {
                 "trace": trace + [{"tool": tool, "args": args, "summary": _summarize(tool, r), "artifact": artifact}],
@@ -117,7 +120,7 @@ def _run_tool(tool: str, args: dict, state: AgentState) -> dict:
             df = state.get("last_df")
             if df is None:
                 return {"trace": trace + [{"tool": tool, "args": args, "summary": "错误: 没有数据，请先调用 query_data", "artifact": None}]}
-            r = visualize(df, question)
+            r = visualize(df, question)  # 纯规则计算（无 I/O），直接调用
             artifact = {"figure": r.figure, "chart_type": r.chart_type}
             return {"trace": trace + [{"tool": tool, "args": args, "summary": _summarize(tool, r), "artifact": artifact}]}
 
@@ -126,13 +129,15 @@ def _run_tool(tool: str, args: dict, state: AgentState) -> dict:
             sql = state.get("last_sql", "")
             if df is None:
                 return {"trace": trace + [{"tool": tool, "args": args, "summary": "错误: 没有数据，请先调用 query_data", "artifact": None}]}
-            r = explain_result(question, sql, df)
+            r = await explain_result_async(question, sql, df)
             artifact = {"insight": r}
             return {"trace": trace + [{"tool": tool, "args": args, "summary": _summarize(tool, r), "artifact": artifact}]}
 
         raise ValueError(f"Unknown tool: {tool}")
 
-    except (APIError, ValueError, RuntimeError, KeyError) as exc:
+    except (APIError, ValueError, RuntimeError, KeyError, OSError) as exc:
+        # OSError 覆盖工具内 prompt 文件缺失等 I/O 异常（808 审查 M13：
+        # 此前这类异常会逃逸出工具，导致整个 SSE 流异常终止而非降级）
         logger.exception("Tool %s failed", tool)
         err_msg = f"工具 {tool} 执行失败: {exc}"
         return {"trace": trace + [{"tool": tool, "args": args, "summary": err_msg, "artifact": None}]}
@@ -141,20 +146,34 @@ def _run_tool(tool: str, args: dict, state: AgentState) -> dict:
 # ── Nodes ────────────────────────────────────────────────
 
 
-def planner_node(state: AgentState) -> dict:
+async def planner_node(state: AgentState) -> dict:
     """Ask LLM what to do next.  Errors are caught and turned into
-    a ``finalize`` action so the UI always receives a response."""
+    a ``finalize`` action so the UI always receives a response.
+
+    808 审查 M3：注入拦截与 LLM/解析失败分文案处理，且均不向用户回显
+    原始异常文本（此前会泄露检测规则与内部调用细节）。
+    808 审查 M1：异步节点，LLM 调用可被取消。
+    """
     step = state.get("step", 0)
     try:
-        decision = plan(
+        decision = await plan(
             state["question"],
             state.get("trace", []),
             history_text=state.get("history_text", ""),
         )
-    except (APIError, ValueError, json.JSONDecodeError, RuntimeError) as exc:
+    except InjectionDetected:
+        logger.warning(
+            "Injection attempt rejected: %s", state["question"][:100]
+        )
+        return {
+            "final_answer": "抱歉，你的问题中包含我无法处理的内容，请换一种问法再试试。",
+            "next_action": "finalize",
+            "step": step + 1,
+        }
+    except (APIError, ValueError, json.JSONDecodeError, RuntimeError):
         logger.exception("Planner failed")
         return {
-            "final_answer": f"Planner 调用失败: {exc}",
+            "final_answer": "抱歉，我暂时无法处理你的问题，请稍后再试或换一种问法。",
             "next_action": "finalize",
             "step": step + 1,
         }
@@ -177,8 +196,8 @@ def planner_node(state: AgentState) -> dict:
 def _make_tool_node(tool_name: str):
     """Factory: create a node that executes *tool_name*."""
 
-    def node(state: AgentState) -> dict:
-        return _run_tool(tool_name, state.get("next_args", {}), state)
+    async def node(state: AgentState) -> dict:
+        return await _run_tool(tool_name, state.get("next_args", {}), state)
 
     return node
 
@@ -188,7 +207,7 @@ def _has_introduce_me(trace: list[dict]) -> bool:
     return any(t.get("tool") == "introduce_me" for t in trace)
 
 
-def _polish_with_persona(raw_answer: str, trace: list[dict]) -> str:
+async def _polish_with_persona(raw_answer: str, trace: list[dict]) -> str:
     """Lightweight LLM polish to ensure the answer follows persona rules.
 
     Only called when the trace contains an introduce_me call, so the final
@@ -206,9 +225,10 @@ def _polish_with_persona(raw_answer: str, trace: list[dict]) -> str:
     ]
     intro_context = "\n".join(intro_results)[:1200]
 
-    client = get_client()
+    client = get_async_client()
     try:
-        resp = client.chat.completions.create(
+        resp = await alogged_chat_create(
+            client,
             model=settings.deepseek_model,
             messages=[
                 {"role": "system", "content": persona},
@@ -226,15 +246,18 @@ def _polish_with_persona(raw_answer: str, trace: list[dict]) -> str:
                 },
             ],
             temperature=0.2,  # low temperature for faithful polish
+            caller="persona_polish",
         )
         polished = (resp.choices[0].message.content or "").strip()
         return polished or raw_answer
     except Exception:
         logger.exception("Persona polish failed, falling back to raw answer")
         return raw_answer
+    finally:
+        await client.close()  # 自建客户端随用随关
 
 
-def finalize_node(state: AgentState) -> dict:
+async def finalize_node(state: AgentState) -> dict:
     """Emit final answer (fallback if max-steps reached without explicit finalize)."""
     answer = state.get("final_answer", "")
     if not answer:
@@ -253,7 +276,7 @@ def finalize_node(state: AgentState) -> dict:
     # If introduce_me was called, polish the answer to maintain persona
     trace = state.get("trace", [])
     if _has_introduce_me(trace):
-        answer = _polish_with_persona(answer, trace)
+        answer = await _polish_with_persona(answer, trace)
 
     return {"final_answer": answer, "step": state.get("step", 0)}
 
@@ -403,17 +426,17 @@ async def stream_run(question: str, history_text: str = "") -> AsyncIterator[dic
 
 
 def run(question: str, history_text: str = "") -> dict:
-    """Run the agent end-to-end.
+    """Run the agent end-to-end（同步门面：smoke 脚本用）。
 
     Returns:
         {"answer": str, "trace": list[dict], "steps": int}
     """
-    result = _app.invoke({
+    result = asyncio.run(_app.ainvoke({
         "question": question,
         "trace": [],
         "step": 0,
         "history_text": history_text,
-    })
+    }))
     return {
         "answer": result.get("final_answer", ""),
         "trace": result.get("trace", []),

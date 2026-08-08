@@ -9,12 +9,11 @@ from __future__ import annotations
 
 import json
 import logging
-import re
 from pathlib import Path
 
-from openai import OpenAI
+from openai import AsyncOpenAI
 
-from agent.llm_client import get_client
+from agent.llm_client import alogged_chat_create, get_async_client
 from agent.sanitize import sanitize_input
 from configs.settings import settings
 
@@ -34,19 +33,45 @@ def _load_planner_system() -> str:
 
 
 def _sanitize_control_chars(s: str) -> str:
-    """Escape bare control characters (U+0000-U+001F) so json.loads can parse them.
+    """Escape bare control characters inside JSON string values.
 
     LLMs occasionally emit literal newlines inside JSON string values, which
-    violates the JSON spec and causes JSONDecodeError.  This replaces the most
-    common offenders with their proper JSON escape sequences.
+    violates the JSON spec and causes JSONDecodeError.  Only characters
+    *inside* ``"..."`` are escaped — structural whitespace between tokens
+    (``\\n``/``\\r``/``\\t``) is valid JSON and must be left untouched,
+    otherwise pretty-printed multi-line JSON becomes unparseable
+    (808 审查 H1 回归修复：早期版本无差别转义全部控制字符）。
     """
     _ESCAPE_MAP = {"\n": "\\n", "\r": "\\r", "\t": "\\t"}
 
-    def _replace(m: re.Match) -> str:
-        ch = m.group(0)
-        return _ESCAPE_MAP.get(ch, f"\\u{ord(ch):04x}")
-
-    return re.sub(r"[\x00-\x1f]", _replace, s)
+    out: list[str] = []
+    in_string = False
+    escaped = False
+    for ch in s:
+        if in_string:
+            if escaped:
+                out.append(ch)
+                escaped = False
+            elif ch == "\\":
+                out.append(ch)
+                escaped = True
+            elif ch == '"':
+                out.append(ch)
+                in_string = False
+            elif ch < "\x20":
+                out.append(_ESCAPE_MAP.get(ch, f"\\u{ord(ch):04x}"))
+            else:
+                out.append(ch)
+        else:
+            if ch == '"':
+                in_string = True
+                out.append(ch)
+            elif ch < "\x20" and ch not in ("\n", "\r", "\t"):
+                # Stray control char outside strings: not valid JSON whitespace
+                out.append(" ")
+            else:
+                out.append(ch)
+    return "".join(out)
 
 
 def _extract_json(raw: str) -> dict:
@@ -72,28 +97,45 @@ def _extract_json(raw: str) -> dict:
     try:
         return json.loads(raw)
     except json.JSONDecodeError:
-        # Fallback: find the outermost {...} using brace counting
+        # Fallback: find the outermost {...} using brace counting that is
+        # aware of string literals (braces inside "..." are not structural).
         start = raw.find("{")
         if start == -1:
             raise ValueError(f"Planner output is not valid JSON: {raw[:200]}")
         depth = 0
+        in_string = False
+        escaped = False
         for i in range(start, len(raw)):
-            if raw[i] == "{":
+            ch = raw[i]
+            if in_string:
+                if escaped:
+                    escaped = False
+                elif ch == "\\":
+                    escaped = True
+                elif ch == '"':
+                    in_string = False
+                continue
+            if ch == '"':
+                in_string = True
+            elif ch == "{":
                 depth += 1
-            elif raw[i] == "}":
+            elif ch == "}":
                 depth -= 1
                 if depth == 0:
                     return json.loads(raw[start : i + 1])
         raise ValueError(f"Planner JSON has unmatched braces: {raw[:200]}")
 
 
-def plan(
+async def plan(
     question: str,
     trace: list[dict],
-    client: OpenAI | None = None,
+    client: AsyncOpenAI | None = None,
     history_text: str = "",
 ) -> dict:
     """Call LLM to decide next action.
+
+    异步实现（808 审查 M1）：await 点即取消点——SSE 断连取消任务时，
+    进行中的 HTTP 请求被真正中止，不再继续计费。
 
     When ``history_text`` is non-empty it is injected as a separate
     user message between the system prompt and the current question,
@@ -104,73 +146,80 @@ def plan(
         {"action": "call", "tool": str, "args": dict}
         {"action": "finalize", "answer": str}
     """
-    client = client or get_client()
+    owns_client = client is None
+    client = client or get_async_client()
 
-    # Sanitize user input to prevent prompt injection
-    question = sanitize_input(question)
+    try:
+        # Sanitize user input to prevent prompt injection
+        question = sanitize_input(question)
 
-    # Build trace context
-    if trace:
-        parts = []
-        for i, t in enumerate(trace, 1):
-            parts.append(f"步骤 {i}: {t['tool']}({t['args']})\n结果: {t['summary']}")
-        trace_text = "\n\n".join(parts)
-    else:
-        trace_text = "(尚未执行任何工具)"
+        # Build trace context
+        if trace:
+            parts = []
+            for i, t in enumerate(trace, 1):
+                parts.append(f"步骤 {i}: {t['tool']}({t['args']})\n结果: {t['summary']}")
+            trace_text = "\n\n".join(parts)
+        else:
+            trace_text = "(尚未执行任何工具)"
 
-    user_msg = (
-        f"【用户问题】\n{question}\n\n"
-        f"【已执行步骤】\n{trace_text}\n\n"
-        f"请决定下一步动作。"
-    )
-
-    messages = [
-        {"role": "system", "content": _load_planner_system()},
-    ]
-    if history_text:
-        # 会话记忆（摘要 + 最近 N 轮）作为独立 user 消息注入（设计文档 §6）；
-        # history_text 由服务端拼装，不过 sanitize
-        messages.append({"role": "user", "content": history_text})
-    messages.append({"role": "user", "content": user_msg})
-
-    resp = client.chat.completions.create(
-        model=settings.deepseek_model,
-        messages=messages,
-        temperature=settings.planner_temperature,
-    )
-    raw = resp.choices[0].message.content or ""
-
-    # Guard against empty LLM response (e.g. API filter, model refusal)
-    if not raw.strip():
-        logger.warning(
-            "Planner LLM returned empty response. "
-            "finish_reason=%s",
-            resp.choices[0].finish_reason,
+        user_msg = (
+            f"【用户问题】\n{question}\n\n"
+            f"【已执行步骤】\n{trace_text}\n\n"
+            f"请决定下一步动作。"
         )
-        # Fallback: route based on question intent so a transient empty
-        # response doesn't silently discard a valid request.
-        if not trace:
-            intro_keywords = ["介绍", "你是谁", "你叫什么", "认识你", "你的背景"]
-            if any(kw in question for kw in intro_keywords):
-                return {
-                    "action": "call",
-                    "tool": "introduce_me",
-                    "args": {"question": question},
-                }
-            data_keywords = [
-                "查", "统计", "排名", "Top", "top", "最高", "最低",
-                "趋势", "对比", "订单", "销售", "金额", "数据", "分析",
-                "多少", "平均", "占比", "画图", "可视化", "图表",
-            ]
-            if any(kw in question for kw in data_keywords):
-                return {
-                    "action": "call",
-                    "tool": "query_data",
-                    "args": {"question": question},
-                }
-        return {
-            "action": "finalize",
-            "answer": "抱歉，我暂时无法处理这个请求，请稍后再试。",
-        }
 
-    return _extract_json(raw)
+        messages = [
+            {"role": "system", "content": _load_planner_system()},
+        ]
+        if history_text:
+            # 会话记忆（摘要 + 最近 N 轮）作为独立 user 消息注入（设计文档 §6）；
+            # history_text 由服务端拼装，不过 sanitize
+            messages.append({"role": "user", "content": history_text})
+        messages.append({"role": "user", "content": user_msg})
+
+        resp = await alogged_chat_create(
+            client,
+            model=settings.deepseek_model,
+            messages=messages,
+            temperature=settings.planner_temperature,
+            caller="planner",
+        )
+        raw = resp.choices[0].message.content or ""
+
+        # Guard against empty LLM response (e.g. API filter, model refusal)
+        if not raw.strip():
+            logger.warning(
+                "Planner LLM returned empty response. "
+                "finish_reason=%s",
+                resp.choices[0].finish_reason,
+            )
+            # Fallback: route based on question intent so a transient empty
+            # response doesn't silently discard a valid request.
+            if not trace:
+                intro_keywords = ["介绍", "你是谁", "你叫什么", "认识你", "你的背景"]
+                if any(kw in question for kw in intro_keywords):
+                    return {
+                        "action": "call",
+                        "tool": "introduce_me",
+                        "args": {"question": question},
+                    }
+                data_keywords = [
+                    "查", "统计", "排名", "Top", "top", "最高", "最低",
+                    "趋势", "对比", "订单", "销售", "金额", "数据", "分析",
+                    "多少", "平均", "占比", "画图", "可视化", "图表",
+                ]
+                if any(kw in question for kw in data_keywords):
+                    return {
+                        "action": "call",
+                        "tool": "query_data",
+                        "args": {"question": question},
+                    }
+            return {
+                "action": "finalize",
+                "answer": "抱歉，我暂时无法处理这个请求，请稍后再试。",
+            }
+
+        return _extract_json(raw)
+    finally:
+        if owns_client:
+            await client.close()  # 自建客户端随用随关（短生命周期事件循环下不留连接噪音）

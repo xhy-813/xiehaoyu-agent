@@ -19,7 +19,7 @@ class FakeClient:
         outer = self
 
         class _Completions:
-            def create(self, model, messages, temperature):
+            async def create(self, model, messages, temperature, **kwargs):
                 outer.captured = messages
                 return SimpleNamespace(
                     choices=[
@@ -36,7 +36,7 @@ class FakeClient:
 class TestPlannerInjection:
     def test_history_inserted_as_separate_user_message(self):
         client = FakeClient()
-        planner.plan("后续问题", [], client=client, history_text="[会话摘要]\n聊了订单趋势")
+        asyncio.run(planner.plan("后续问题", [], client=client, history_text="[会话摘要]\n聊了订单趋势"))
         roles = [m["role"] for m in client.captured]
         assert roles == ["system", "user", "user"]
         assert "[会话摘要]" in client.captured[1]["content"]
@@ -44,13 +44,13 @@ class TestPlannerInjection:
 
     def test_no_history_keeps_two_messages(self):
         client = FakeClient()
-        planner.plan("你好", [], client=client)
+        asyncio.run(planner.plan("你好", [], client=client))
         assert [m["role"] for m in client.captured] == ["system", "user"]
 
     def test_history_passes_through_sanitize(self):
         """planner 自身不清洗 history_text（注入筛查在 build_history_text 完成，见 Task 6）；question 仍过。"""
         client = FakeClient()
-        planner.plan("正常问题", [], client=client, history_text="[最近对话]\n用户: 你好")
+        asyncio.run(planner.plan("正常问题", [], client=client, history_text="[最近对话]\n用户: 你好"))
         assert "[最近对话]" in client.captured[1]["content"]
 
 
@@ -58,7 +58,7 @@ class TestGraphWiring:
     def test_run_passes_history_to_planner(self, monkeypatch):
         captured = {}
 
-        def fake_plan(question, trace, client=None, history_text=""):
+        async def fake_plan(question, trace, client=None, history_text=""):
             captured["history_text"] = history_text
             return {"action": "finalize", "answer": "ok"}
 
@@ -70,7 +70,7 @@ class TestGraphWiring:
     def test_run_default_history_empty(self, monkeypatch):
         captured = {}
 
-        def fake_plan(question, trace, client=None, history_text=""):
+        async def fake_plan(question, trace, client=None, history_text=""):
             captured["history_text"] = history_text
             return {"action": "finalize", "answer": "ok"}
 
@@ -81,7 +81,7 @@ class TestGraphWiring:
     def test_final_answer_event_steps_not_zero(self, monkeypatch):
         """finalize_node 补 step 后，SSE final_answer 事件的 steps 反映真实步数。"""
 
-        def fake_plan(question, trace, client=None, history_text=""):
+        async def fake_plan(question, trace, client=None, history_text=""):
             return {"action": "finalize", "answer": "ok"}
 
         monkeypatch.setattr(graph, "plan", fake_plan)

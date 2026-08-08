@@ -20,8 +20,10 @@ def store(tmp_path):
 
 
 def _make_client(payload: str):
+    """异步假客户端（M1：summarizer 已迁移到 AsyncOpenAI）。"""
+
     class _Completions:
-        def create(self, model, messages, temperature):
+        async def create(self, model, messages, temperature, **kwargs):
             return SimpleNamespace(
                 choices=[SimpleNamespace(message=SimpleNamespace(content=payload))]
             )
@@ -114,7 +116,7 @@ class TestMaybeSummarize:
         self._fill(store, sid, 12)
 
         class _BadCompletions:
-            def create(self, model, messages, temperature):
+            async def create(self, model, messages, temperature, **kwargs):
                 raise RuntimeError("LLM down")
 
         bad = SimpleNamespace(chat=SimpleNamespace(completions=_BadCompletions()))
@@ -125,14 +127,12 @@ class TestMaybeSummarize:
 
     def test_concurrent_calls_only_one_summarizes(self, store):
         """并发防护：两个协程同 session 并发，只有一个真正生成摘要（修复 TOCTOU）。"""
-        import time as _time
-
         sid = store.create_session("u")
         self._fill(store, sid, 12)
 
         class _SlowCompletions:
-            def create(self, model, messages, temperature):
-                _time.sleep(0.2)
+            async def create(self, model, messages, temperature, **kwargs):
+                await asyncio.sleep(0.2)
                 return SimpleNamespace(
                     choices=[SimpleNamespace(message=SimpleNamespace(content="并发摘要"))]
                 )
@@ -169,7 +169,7 @@ class TestGenerateTitle:
         sid = store.create_session("u")
 
         class _BadCompletions:
-            def create(self, model, messages, temperature):
+            async def create(self, model, messages, temperature, **kwargs):
                 raise RuntimeError("LLM down")
 
         bad = SimpleNamespace(chat=SimpleNamespace(completions=_BadCompletions()))

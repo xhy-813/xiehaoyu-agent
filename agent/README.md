@@ -6,10 +6,10 @@
 
 | 文件 | 职责 |
 | --- | --- |
-| [graph.py](graph.py) | LangGraph 状态机定义、工具节点、路由、`stream_run()` 异步生成器、`_serialize_artifact()` 序列化 |
+| [graph.py](graph.py) | LangGraph 状态机定义、async 工具节点、路由、`stream_run()` 异步生成器、`_serialize_artifact()` 序列化 |
 | [planner.py](planner.py) | LLM 规划器：输出 JSON 决策 `{action, tool, args}` 或 `{action: "finalize", answer}` |
-| [llm_client.py](llm_client.py) | 共享 OpenAI 客户端工厂（指向 DeepSeek，timeout 30s，max_retries 1） |
-| [sanitize.py](sanitize.py) | 输入清洗：剥离代码块、检测 prompt 注入模式（planner 和 introduce_me 入口都会过一遍） |
+| [llm_client.py](llm_client.py) | 共享 OpenAI 客户端工厂（同步 `get_client()` / 异步 `get_async_client()`，timeout 30s、max_retries 1）+ `logged_chat_create` / `alogged_chat_create` token 消耗日志封装 |
+| [sanitize.py](sanitize.py) | 输入清洗：剥离代码块、检测 prompt 注入模式（中英文）；`sanitize_history()` 供会话记忆注入筛查；命中抛 `InjectionDetected`（不含正则细节） |
 | [tools/](tools/) | 4 个工具节点（见下） |
 
 ## 状态机
@@ -22,9 +22,10 @@ START → planner → (条件路由) → introduce_me / query_data / visualize /
             └→ finalize → END
 ```
 
-状态 `AgentState`：`question` / `trace`（工具执行轨迹）/ `last_df` / `last_sql` / `step` / `next_action` / `next_tool` / `next_args` / `final_answer`。
+状态 `AgentState`：`question` / `trace`（工具执行轨迹）/ `last_df` / `last_sql` / `step` / `next_action` / `next_tool` / `next_args` / `final_answer` / `history_text`（会话记忆文本，planner 注入用）。
 
 - 图在模块加载时编译一次并缓存（`_app = build_graph()`），所有请求复用。
+- LLM 调用走异步客户端（`AsyncOpenAI`），SSE 断连取消可真正中断进行中的 HTTP 请求，不再白烧 token；同步入口 `run()` 经 `asyncio.run()` 包装供 CLI/测试使用。
 - `router()`：步数达上限、planner 决定 finalize、或返回了未知工具名时，都落入 `finalize`。
 - `finalize_node()`：无显式 answer 时用最后一条 trace 兜底；若轨迹中包含 `introduce_me`，会再经一次轻量 LLM 润色（`_polish_with_persona`，temperature 0.2）保证第一人称人设。
 
@@ -52,9 +53,9 @@ System prompt 在 [prompts/planner.md](../prompts/planner.md)，要求严格输�
 
 健壮性处理（[planner.py](planner.py)）：
 
-- `_extract_json()`：剥 markdown 代码块、转义裸控制字符、大括号配对兜底提取（应对 LLM 输出中的嵌套 `}`）。
+- `_extract_json()`：剥 markdown 代码块、字符串感知的裸控制字符转义（结构性换行不受影响）、字符串感知的大括号配对兜底提取（多行/围栏 JSON 均可解析）。
 - 空响应 fallback：LLM 返回空时按问题关键词路由（自我介绍类 → `introduce_me`，数据查询类 → `query_data`），避免误判为"无法处理"。
-- 输入先经 `sanitize_input()` 清洗，防 prompt 注入。
+- 输入先经 `sanitize_input()` 清洗（中英文注入模式），命中抛 `InjectionDetected` → planner_node 返回友好拒答文案，不回显检测规则或异常细节。
 
 ## SSE 流式事件
 

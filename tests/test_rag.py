@@ -16,6 +16,7 @@ import pytest
 from chromadb.errors import NotFoundError
 
 from rag.ingest import (
+    _mask_pii,
     chunk_markdown,
     hard_split,
     split_by_heading,
@@ -233,6 +234,37 @@ class TestChunkMarkdown:
         p.write_text("# Profile\n\nI am a developer.", encoding="utf-8")
         chunks = chunk_markdown(p, p.read_text(encoding="utf-8"), tmp_src)
         assert chunks[0]["content"].startswith("# Profile")
+
+
+# ── PII 脱敏（808 审查 C1）───────────────────────────────────
+
+
+class TestMaskPii:
+    def test_phone_masked(self):
+        assert "18712347395" not in _mask_pii("电话：18712347395")
+        assert _mask_pii("电话：18712347395") == "电话：187****95"
+
+    def test_email_masked(self):
+        masked = _mask_pii("邮箱：someone@example.com")
+        assert "someone@example.com" not in masked
+        assert masked == "邮箱：s***@example.com"
+
+    def test_non_pii_text_unchanged(self):
+        text = "2026 年毕业于中南大学，订单数 99441"
+        assert _mask_pii(text) == text
+
+    def test_chunks_are_masked(self, tmp_path):
+        """chunk_markdown 产出的内容必须已脱敏（embedding 与存储同源）。"""
+        src = tmp_path / "简历"
+        src.mkdir()
+        p = src / "c.md"
+        text = "# 联系方式\n\n电话：18712347395，邮箱：me@163.com"
+        p.write_text(text, encoding="utf-8")
+        chunks = chunk_markdown(p, text, tmp_path)
+        joined = "".join(c["content"] for c in chunks)
+        assert "18712347395" not in joined
+        assert "me@163.com" not in joined
+        assert "187****95" in joined
 
 
 # ── Hit dataclass tests ───────────────────────────────────────

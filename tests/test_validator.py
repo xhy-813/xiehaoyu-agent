@@ -41,6 +41,34 @@ class TestValidate:
         )
         assert "JOIN" in result
 
+    def test_rejects_recursive_cte(self):
+        """808 审查 H4：递归 CTE 可无终止计算，一律拒绝。"""
+        with pytest.raises(SQLValidationError, match="recursive"):
+            validate(
+                "WITH RECURSIVE r(n) AS (SELECT 1 UNION ALL SELECT n+1 FROM r) "
+                "SELECT COUNT(*) FROM r;"
+            )
+
+    def test_rejects_pragma_function_form(self):
+        """PRAGMA 不匹配 pragma_table_info（下划线是词字符），函数形式单独拦截。"""
+        with pytest.raises(SQLValidationError, match="forbidden function"):
+            validate("SELECT * FROM pragma_table_info('orders');")
+
+    def test_rejects_readfile_function(self):
+        with pytest.raises(SQLValidationError, match="forbidden function"):
+            validate("SELECT readfile('/etc/passwd');")
+
+    def test_rejects_load_extension_function(self):
+        with pytest.raises(SQLValidationError, match="forbidden function"):
+            validate("SELECT load_extension('evil.so');")
+
+    def test_normal_cte_still_allowed(self):
+        result = validate(
+            "WITH monthly AS (SELECT strftime('%Y-%m', ts) AS m FROM t) "
+            "SELECT m FROM monthly;"
+        )
+        assert result.startswith("WITH")
+
     def test_rejects_insert(self):
         with pytest.raises(SQLValidationError):
             validate("INSERT INTO t VALUES (1);")

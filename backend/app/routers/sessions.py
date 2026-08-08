@@ -11,6 +11,7 @@ import json
 
 from fastapi import APIRouter, HTTPException, Request
 
+from backend.app.deps.rate_limit import check_sessions_write_limit, get_client_ip
 from backend.app.deps.user import get_user_id
 from backend.app.schemas.session import RenameRequest
 from backend.app.services import session_store
@@ -30,6 +31,7 @@ def _load_owned_session(session_id: str, user_id: str) -> dict:
 
 @router.post("")
 async def create_session(request: Request) -> dict:
+    check_sessions_write_limit(get_client_ip(request))
     user_id = get_user_id(request)
     sid = await asyncio.to_thread(session_store.create_session, user_id)
     return {"session_id": sid}
@@ -82,6 +84,7 @@ async def replay_session(session_id: str, request: Request) -> dict:
 
 @router.patch("/{session_id}")
 async def rename_session(session_id: str, body: RenameRequest, request: Request) -> dict:
+    check_sessions_write_limit(get_client_ip(request))
     user_id = get_user_id(request)
     await asyncio.to_thread(_load_owned_session, session_id, user_id)
     await asyncio.to_thread(session_store.rename_session, session_id, body.title)
@@ -90,6 +93,7 @@ async def rename_session(session_id: str, body: RenameRequest, request: Request)
 
 @router.delete("/{session_id}")
 async def delete_session(session_id: str, request: Request) -> dict:
+    check_sessions_write_limit(get_client_ip(request))
     user_id = get_user_id(request)
     await asyncio.to_thread(_load_owned_session, session_id, user_id)
     await asyncio.to_thread(session_store.delete_session, session_id)

@@ -14,6 +14,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import uuid
 
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import StreamingResponse
@@ -97,6 +98,11 @@ async def _event_generator(
     落库：正常/异常路径在流内 await 完成；客户端强断开（GeneratorExit）
     路径在 finally 里 fire-and-forget，三条路径由 persisted 标记保证只跑一次。
     """
+    req_id = uuid.uuid4().hex[:8]  # 808 审查 M14：请求级关联 ID，贯穿本条流的日志
+    logger.info(
+        "chat start req=%s user=%s session=%s",
+        req_id, (user_id or "anon")[:8], (session_id or "-")[:8],
+    )
     queue: asyncio.Queue = asyncio.Queue()
 
     async def _produce():
@@ -155,7 +161,7 @@ async def _event_generator(
             yield "data: [DONE]\n\n"
         await _finalize()
     except Exception:
-        logger.exception("SSE stream failed for question: %s", question[:200])
+        logger.exception("SSE stream failed [req=%s] for question: %s", req_id, question[:200])
         err = json.dumps(
             {"type": "error", "data": {"message": "服务器内部错误，请稍后重试"}},
             ensure_ascii=False,

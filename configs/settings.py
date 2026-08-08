@@ -48,6 +48,7 @@ class Settings:
     deepseek_model: str = os.getenv("DEEPSEEK_MODEL", "deepseek-v4-flash")
     ip_hourly_quota: int = _get_int("IP_HOURLY_QUOTA", "20")
     global_daily_quota: int = _get_int("GLOBAL_DAILY_QUOTA", "200")
+    sessions_ip_hourly_quota: int = _get_int("SESSIONS_IP_HOURLY_QUOTA", "120")
     max_agent_steps: int = _get_int("MAX_AGENT_STEPS", "5")
     sql_retry_max: int = _get_int("SQL_RETRY_MAX", "3")
     cors_origins: str = os.getenv("CORS_ORIGINS", "http://localhost:5173")

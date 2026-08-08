@@ -219,7 +219,13 @@ export const useChatStore = defineStore('chat', () => {
   async function loadSession(id: string) {
     if (isStreaming.value) return
     const sessions = useSessionsStore()
-    const data = await sessions.loadReplay(id)
+    let data: Awaited<ReturnType<typeof sessions.loadReplay>>
+    try {
+      data = await sessions.loadReplay(id)
+    } catch {
+      streamError.value = '加载会话失败，请重试'
+      return
+    }
     messages.value = data.messages.map((m) => ({
       id: String(m.id),
       role: m.role,

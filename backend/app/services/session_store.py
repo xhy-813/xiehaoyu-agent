@@ -1,6 +1,6 @@
 """会话与消息的 SQLite 持久化（设计文档 §4 存储实现选型）。
 
-同步 ``sqlite3`` + ``threading.Lock`` + WAL。公开函数均为同步阻塞实现；
+同步 ``sqlite3`` + ``threading.RLock`` + WAL。公开函数均为同步阻塞实现；
 async 调用方（routers/services）必须用 ``asyncio.to_thread()`` 包装，
 避免阻塞 FastAPI 事件循环。
 """
@@ -235,6 +235,9 @@ def cleanup(max_age_days: int, max_per_user: int) -> dict:
         aged = _c().execute(
             "DELETE FROM sessions WHERE updated_at < ?", (cutoff,)
         ).rowcount
+        if max_per_user <= 0:
+            _c().commit()
+            return {"aged_out": aged, "overflow_deleted": 0}
         overflow = 0
         rows = _c().execute(
             "SELECT user_id, COUNT(*) AS c FROM sessions GROUP BY user_id HAVING c > ?",

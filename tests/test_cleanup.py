@@ -58,3 +58,10 @@ class TestCleanup:
     def test_nothing_to_clean(self, store):
         store.create_session("u")
         assert store.cleanup(30, 50) == {"aged_out": 0, "overflow_deleted": 0}
+
+    def test_zero_max_per_user_skips_overflow(self, store):
+        """max_per_user=0 时跳过溢出删除且不产生非法 SQL（终审修复）。"""
+        store.create_session("u")
+        result = store.cleanup(max_age_days=30, max_per_user=0)
+        assert result == {"aged_out": 0, "overflow_deleted": 0}
+        assert len(store.list_sessions("u")) == 1

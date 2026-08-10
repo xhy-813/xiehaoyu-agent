@@ -75,6 +75,8 @@ function handleEnter(e: KeyboardEvent) {
 
 function onKeydown(e: KeyboardEvent) {
   if (e.key === 'Escape' && text.value) {
+    // 阻止冒泡到 window 级 Esc 监听（ChatView.useEscapeKey 返回作品集），避免清空草稿时误退出聊天页
+    e.stopPropagation()
     text.value = ''
     inputRef.value?.focus()
   }

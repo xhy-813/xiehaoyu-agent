@@ -20,3 +20,7 @@ export const findDataArtifact = (t: ToolTrace[]) =>
 /** 最后一个含 figure_json 的 artifact（最新一次可视化结果） */
 export const findChartArtifact = (t: ToolTrace[]) =>
   findLastArtifact(t, a => !!a.figure_json)
+
+/** 最后一个含非空 citations 的 artifact（最新一次 RAG 引用来源，08-09 方案 T4-1） */
+export const findCitationArtifact = (t: ToolTrace[]) =>
+  findLastArtifact(t, a => Array.isArray(a.citations) && a.citations.length > 0)

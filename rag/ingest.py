@@ -37,9 +37,15 @@ BATCH_SIZE = 200
 
 # ── PII 脱敏（808 审查 C1，2026-08-08 决策）────────────────
 # 手机号/邮箱在写入向量库前打码：向量库会随公网 RAG 问答被检索引用，
-# 源文件保持原样（知识库源文件不纳入 git、仅本机持有）。
+# 打码保证检索片段不含联系方式原文。源文件保持原样，且已纳入 git
+# 公开仓（2026-08-08 决策保持现状）——打码只覆盖 RAG 运行时链路。
+# 例外：PII_EXEMPT 白名单文件跳过打码（08-09 方案 T2，2026-08-10）。
+# 联系方式口径放开后，专为公开联系方式而建的文件需要保留完整邮箱/微信，
+# RAG 才能检索到原文。白名单只放「目的即公开联系方式」的文件，其余维持脱敏。
 _PHONE_RE = re.compile(r"(?<!\d)1[3-9]\d{9}(?!\d)")
 _EMAIL_RE = re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}")
+
+PII_EXEMPT = {"常见问题/13-联系方式.md"}
 
 
 def _mask_pii(text: str) -> str:
@@ -145,12 +151,14 @@ def hard_split(text: str, max_chars: int = MAX_CHARS, overlap: int = OVERLAP) ->
 def chunk_markdown(path: Path, text: str, source_root: Path) -> list[dict]:
     """Chunk a single markdown file into embeddable pieces."""
     rel = path.relative_to(source_root).as_posix()
+    mask = rel not in PII_EXEMPT  # 豁免白名单文件保留联系方式原文（08-09 方案 T2）
     out: list[dict] = []
     chunk_idx = 0
     for heading, body in split_by_heading(text):
         for piece in hard_split(body):
             content = f"# {heading}\n\n{piece}" if heading else piece
-            content = _mask_pii(content)  # 入库前脱敏（embedding 与存储都用打码文本）
+            if mask:
+                content = _mask_pii(content)  # 入库前脱敏（embedding 与存储都用打码文本）
             digest = hashlib.md5(content.encode("utf-8")).hexdigest()[:16]
             out.append(
                 {

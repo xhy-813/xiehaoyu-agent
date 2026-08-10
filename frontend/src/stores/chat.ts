@@ -30,6 +30,8 @@ export const useChatStore = defineStore('chat', () => {
   const abortController = ref<AbortController | null>(null)
   const currentTool = ref<string | null>(null)  // 流式期间正在执行的工具名
   const wasStopped = ref(false)
+  const slowStream = ref(false)  // T4-10：流式超过 60s 的中间态提示开关
+  let slowTimer: ReturnType<typeof setTimeout> | null = null
 
   // ── Avatar state ──────────────────────────────────────────────────────────
 
@@ -139,6 +141,11 @@ export const useChatStore = defineStore('chat', () => {
     streamError.value = null
     setAvatarState('thinking')
 
+    // 08-09 方案 T4-10：流式超过 60s 无结果时给出中间态提示，避免用户干等
+    slowStream.value = false
+    if (slowTimer) clearTimeout(slowTimer)
+    slowTimer = setTimeout(() => { slowStream.value = true }, 60_000)
+
     // 4. Start SSE stream
     try {
       await sseChatStream(question, {
@@ -160,9 +167,11 @@ export const useChatStore = defineStore('chat', () => {
           assistantMsg.tools = currentTrace.value.map((t) => t.tool)
           assistantMsg.trace = [...currentTrace.value]
         },
-        onError: (err: string) => {
+        onError: (err: string, status?: number) => {
           streamError.value = err
-          assistantMsg.content = `执行失败：${err}`
+          // 08-09 方案 T4-3：429 限流的后端文案已友好化，直接透传，
+          // 不加「执行失败：」前缀（避免看起来像系统崩溃）
+          assistantMsg.content = status === 429 ? err : `执行失败：${err}`
         },
         onDone: () => {
           // 刷新列表排序/标题；标题由后端异步生成，5s 后再刷一次兜底
@@ -172,9 +181,9 @@ export const useChatStore = defineStore('chat', () => {
       }, abortController.value.signal, { sessionId })
     } catch (err: any) {
       if (err instanceof SSEStreamError && err.kind === 'timeout') {
-        // 本地 120s 超时（后端可能仍在执行）：区别于用户主动停止（808 审查 M4）
+        // 本地 180s 超时（后端可能仍在执行）：区别于用户主动停止（808 审查 M4）
         streamError.value = '请求超时'
-        assistantMsg.content = '请求超时，请稍后重试。'
+        assistantMsg.content = '响应时间较长，请稍后重试。'
         assistantMsg.error = true
       } else if (err instanceof SSEStreamError && err.kind === 'stream') {
         streamError.value = '连接中断'
@@ -201,6 +210,8 @@ export const useChatStore = defineStore('chat', () => {
       isStreaming.value = false
       abortController.value = null
       currentTool.value = null
+      if (slowTimer) { clearTimeout(slowTimer); slowTimer = null }
+      slowStream.value = false
     }
   }
 
@@ -214,6 +225,7 @@ export const useChatStore = defineStore('chat', () => {
     currentTrace.value = []
     streamError.value = null
     currentTool.value = null
+    wasStopped.value = false
     avatarState.value = 'idle'
     if (avatarTimer) { clearTimeout(avatarTimer); avatarTimer = null }
     // 清空 = 开始新会话
@@ -242,6 +254,7 @@ export const useChatStore = defineStore('chat', () => {
     }))
     currentTrace.value = []
     streamError.value = null
+    wasStopped.value = false  // 复位停止标记，避免回放会话末条消息幻影显示「已停止生成」
     sessions.currentId = id
   }
 
@@ -254,6 +267,7 @@ export const useChatStore = defineStore('chat', () => {
     avatarState,
     hasData,
     wasStopped,
+    slowStream,
     sendMessage,
     stopStreaming,
     clearChat,

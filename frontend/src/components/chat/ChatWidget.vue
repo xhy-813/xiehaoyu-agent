@@ -13,6 +13,11 @@
         />
       </div>
 
+      <!-- T4-10：流式超过 60s 的中间态提示（180s 超时前不干等） -->
+      <div v-if="chat.isStreaming && chat.slowStream" class="slow-hint">
+        仍在处理中，请耐心等待…
+      </div>
+
       <button
         v-if="showScrollButton"
         class="scroll-to-bottom"
@@ -141,6 +146,14 @@ onBeforeUnmount(() => {
 .scroll-to-bottom:hover {
   border-color: var(--scroll-to-bottom-hover-border);
   transform: translateY(-2px);
+}
+.slow-hint {
+  max-width: 768px;
+  margin: 0.4rem auto 0;
+  font-size: 0.72rem;
+  color: var(--text-3);
+  text-align: center;
+  animation: pulse-glow 2.4s ease-in-out infinite;
 }
 /* 输入区：粘性底部 + 毛玻璃，与消息区有层次感 */
 .input-area {

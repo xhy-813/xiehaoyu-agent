@@ -4,12 +4,12 @@
 - 项目类型：LLM Agent 系统 / 全栈应用
 - 时间：2026年07月
 - 角色：独立设计开发
-- 技术栈：Python / LangGraph / DeepSeek / ChromaDB / SQLite / Plotly / FastAPI / Vue 3 / TypeScript / Naive UI / Nginx / Docker
+- 技术栈：Python / LangGraph / DeepSeek / ChromaDB / SQLite / Plotly / FastAPI / Vue 3 / TypeScript / Naive UI / Nginx
 - 项目链接：https://gitee.com/xiehaoyu12138/xiehaoyu-agent/tree/main/
 
 ## 背景 (Situation)
 
-在找数据分析/数据工程实习的过程中，我意识到传统简历很难充分展示技术能力。面试官看到的是静态文字，无法直观感受我的数据分析思维和工程能力。同时，面试中经常被问到"介绍一下你自己""你做过什么项目"等问题，回答质量直接影响面试结果。
+在准备 2026 秋招（数据分析/数据工程方向）的过程中，我意识到传统简历很难充分展示技术能力。面试官看到的是静态文字，无法直观感受我的数据分析思维和工程能力。同时，面试中经常被问到"介绍一下你自己""你做过什么项目"等问题，回答质量直接影响面试结果。
 
 我希望打造一个能代表我、能展示我数据能力的"数字分身"：
 - 能回答关于我的背景、经历、项目的问题
@@ -128,7 +128,7 @@ START → planner → tool_router → introduce_me/query_data/visualize/explain_
 
 这个项目是我独立设计实现的 Xiehaoyu-Agent，是一个基于 LLM Agent 的个人智能体与 ChatBI 系统。
 
-**背景**是我在找实习时发现传统简历很难展示技术能力，于是想做一个"数字分身"，既能回答关于我的问题，又能现场演示数据分析能力。
+**背景**是我在准备 2026 秋招时发现传统简历很难展示技术能力，于是想做一个"数字分身"，既能回答关于我的问题，又能现场演示数据分析能力。
 
 **技术架构**上，我用 LangGraph 做了状态机驱动多 Tool 编排，4 个 Tool 分别是：RAG 检索、Text2SQL 查数据、自动可视化、结果解读。LLM 自己决定调用链，最多支持 5 轮推理。
 

@@ -37,13 +37,14 @@ watch(() => props.isStreaming, (now, prev) => {
   overflow: hidden;
   overflow-wrap: break-word;
 }
+/* 错误气泡三色由 global.css 按主题定义（08-09 方案 T4-6） */
 .msg-bubble-error {
-  background: rgba(255, 80, 80, 0.06);
-  border: 1px solid rgba(255, 80, 80, 0.2);
+  background: var(--error-bg);
+  border: 1px solid var(--error-border);
   border-radius: 12px;
   padding: 0.6rem 0.9rem;
 }
-.msg-bubble-error .msg-content { color: #ff8080; }
+.msg-bubble-error .msg-content { color: var(--error-text); }
 .msg-content {
   font-size: 0.875rem;
   line-height: 1.7;

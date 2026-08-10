@@ -68,17 +68,26 @@ ChatInput → chat store.send() → sseChatStream() → POST /api/chat
 ### SSE 客户端（[utils/sse.ts](src/utils/sse.ts)）
 
 - 180 秒超时（覆盖后端多步 LLM + SQL 重试的最坏合法时长，Nginx `proxy_read_timeout` 300s 之内）。
-- 错误分类重试（`SSEStreamError.kind`）：只有**连接未建立**（`connect`）才自动重试（最多 3 次，指数退避 1s/2s/4s）；流中途断开（`stream`）与超时（`timeout`）**不重试**——后端可能已执行完部分步骤，重试会双倍消耗 LLM 额度；429 等应用层错误立即透传。
-- 外部 `AbortSignal` 联动"停止生成"：中断后已生成内容保留，可一键重试；超时与手动停止分别提示（不再混淆为"已取消"）。
+- 错误分类重试（`SSEStreamError.kind`）：只有**连接未建立**（`connect`）才自动重试（最多 3 次，指数退避 1s/2s/4s）；流中途断开（`stream`）与超时（`timeout`）**不重试**——后端可能已执行完部分步骤，重试会双倍消耗 LLM 额度；429 等应用层错误立即透传。`onError` 回调携带 HTTP 状态码，429 限流直接展示后端友好文案、不加「执行失败：」前缀（08-09 方案 T4-3）。
+- 外部 `AbortSignal` 联动"停止生成"：中断后已生成内容保留，可一键重试；重试成对删除 user+assistant 消息再重发（regenerate 语义，T4-2）；超时与手动停止分别提示（不再混淆为"已取消"）。
 - 解析失败的单行只警告不崩溃（容忍畸形 JSON）。
 
 ### 结果展示
 
-每条 assistant 消息内联展示自己的图表（ChartRenderer ← `figure_json`）、数据表（← `df_json`，SQL 默认折叠）和执行轨迹时间线（颜色编码：蓝=查询 / 绿=图表 / 橙=检索 / 紫=解读）。
+每条 assistant 消息内联展示自己的图表（ChartRenderer ← `figure_json`）、数据表（← `df_json`，SQL 默认折叠）和执行轨迹时间线（颜色编码：蓝=查询 / 绿=图表 / 橙=检索 / 紫=解读）。RAG 回答附「引用来源」折叠区（source + heading 路径 + 相似度，T4-1）；图表区底部小字标注「演示数据来自 Kaggle Olist 公开数据集」（T4-4）。
+
+### 会话切换与等待提示（08-09 方案 T3 / T4-10）
+
+- 流式期间点击侧栏会话或「新会话」：先 `confirm` 提示将中断本次回答，确认后 `stopStreaming()` 中断当前流再切换（参考 CopilotKit 切换 thread 自动 abortRun）。
+- 流式超过 60s 在消息区底部显示「仍在处理中，请耐心等待…」中间态（`chat.slowStream`）；超时文案为「响应时间较长，请稍后重试」。
+
+### 转化出口（T4-7）
+
+聊天页顶栏右侧：「联系我」弹层（邮箱/微信，点击即复制）+「下载简历」按钮（`/resume.pdf`，静态资产在 `public/resume.pdf`，替换文件即可换版）。
 
 ### 主题系统
 
-CSS 变量驱动（[global.css](src/styles/global.css) 定义变量），`useTheme` 切换并持久化到 localStorage，Naive UI 同步切换 `darkTheme` / `lightTheme`。深色主色调 `#64ffda`，浅色 `#0969da`。新增颜色一律走 CSS 变量，不要硬编码。
+CSS 变量驱动（[global.css](src/styles/global.css) 定义变量），`useTheme` 切换并持久化到 localStorage；首次访问无本地偏好时跟随系统 `prefers-color-scheme`（T4-9）。Naive UI 同步切换 `darkTheme` / `lightTheme`。深色主色调 `#64ffda`，浅色 `#0969da`。新增颜色一律走 CSS 变量，不要硬编码（错误气泡三色：`--error-bg/-border/-text`，T4-6）。
 
 ### Lottie 角色动画
 
@@ -86,7 +95,7 @@ CSS 变量驱动（[global.css](src/styles/global.css) 定义变量），`useThe
 
 ## 响应式
 
-桌面端（>980px）左栏固定导航 + 右栏内容；移动端（≤980px）顶部身份块 + 横向导航。断点判断统一走 `useMediaQuery`。
+桌面端（>980px）左栏固定导航 + 右栏内容；移动端（≤980px）顶部身份块 + 横向导航。断点判断统一走 `useMediaQuery`。聊天页侧栏为 desktop docked / 移动端（≤767px）overlay 抽屉双模式：默认收起，打开时带遮罩、点击外部收起（T4-8，参考 CopilotKit sidebar）。
 
 ## 改内容去哪改
 

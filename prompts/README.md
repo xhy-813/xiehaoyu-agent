@@ -6,11 +6,11 @@
 
 | 文件 | 版本 | 用途 | 引用方 |
 | --- | --- | --- | --- |
-| [system_persona.md](system_persona.md) | 1.1.0 | Agent 核心人设：第一人称、回答风格、知识库说明、安全边界 | `introduce_me.py`（system）+ `graph.py` finalize 润色 |
+| [system_persona.md](system_persona.md) | 1.3.0 | Agent 核心人设：第一人称、2026 秋招口径、回答风格、知识库说明、联系方式放开规则、Olist 公开数据集说明、安全边界 | `introduce_me.py`（system）+ `graph.py` finalize 润色 |
 | [planner.md](planner.md) | 1.3.0 | Planner 决策：工具清单、选择规则、失败恢复、安全规则、会话记忆注入 | `planner.py`（system） |
 | [introduce_me.md](introduce_me.md) | 1.2.0 | RAG 回答模板：检索片段 + 格式约束 + 自我介绍模板 | `introduce_me.py`（user 模板） |
 | [text2sql.md](text2sql.md) | 1.4.0 | Text2SQL：质量规范、COUNT/LIMIT/JOIN/长表规则、反面示例 | `query_data.py`（拆分 system + user） |
-| [explain.md](explain.md) | 1.2.0 | 数据解读：洞察要求、Olist 业务背景、正反面示例 | `explain_result.py`（拆分 system + user） |
+| [explain.md](explain.md) | 1.2.1 | 数据解读：洞察要求、Olist 业务背景（含公开数据集来源说明）、正反面示例 | `explain_result.py`（拆分 system + user） |
 | [summary.md](summary.md) | 1.0.0 | 会话摘要：把对话历史压缩为简洁中文摘要 | `summarizer.py` |
 
 ## 结构约定（改动时务必注意）

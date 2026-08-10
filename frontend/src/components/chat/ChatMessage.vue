@@ -79,7 +79,7 @@
         <button class="action-btn" aria-label="复制内容" title="复制" @click="copyContent">
           <n-icon size="14"><svg viewBox="0 0 24 24"><path fill="currentColor" d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg></n-icon>
         </button>
-        <button v-if="isError" class="action-btn" aria-label="重试" title="重试" @click="retry">
+        <button v-if="isError && isLastAssistant" class="action-btn" aria-label="重试" title="重试" @click="retry">
           <n-icon size="14"><svg viewBox="0 0 24 24"><path fill="currentColor" d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg></n-icon>
         </button>
         <template v-if="message.steps">
@@ -137,14 +137,20 @@ const avatarState = computed<AvatarState>(() => {
 const isError = computed(() => props.message.error === true)
 
 function retry() {
-  if (isError.value) {
-    const idx = chat.messages.findIndex(m => m === props.message)
-    // Remove the failed message before retrying
-    chat.messages.splice(idx, 1)
-  }
+  if (chat.isStreaming) return
   const idx = chat.messages.findIndex(m => m === props.message)
-  const prevUser = chat.messages.slice(0, idx).reverse().find(m => m.role === 'user')
-  if (prevUser && !chat.isStreaming) chat.sendMessage(prevUser.content)
+  if (idx === -1) return
+  // 向上找到触发该回答的用户消息
+  let userIdx = -1
+  for (let i = idx - 1; i >= 0; i--) {
+    if (chat.messages[i].role === 'user') { userIdx = i; break }
+  }
+  if (userIdx === -1) return
+  const question = chat.messages[userIdx].content
+  // 成对删除 user + assistant 再重发（08-09 方案 T4-2，对齐 CopilotKit regenerate 语义）
+  chat.messages.splice(idx, 1)
+  chat.messages.splice(userIdx, 1)
+  chat.sendMessage(question)
 }
 
 function formatTime(ts: number) {

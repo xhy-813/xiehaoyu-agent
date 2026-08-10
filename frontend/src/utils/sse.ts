@@ -35,7 +35,8 @@ export interface SSECallbacks {
   onPlannerDecision?: (data: SSEChatEvent['data']) => void
   onToolEnd?: (data: SSEChatEvent['data']) => void
   onFinalAnswer?: (data: SSEChatEvent['data']) => void
-  onError?: (message: string) => void
+  /** status：HTTP 状态码（仅连接即失败的场景有值，如 429；08-09 方案 T4-3） */
+  onError?: (message: string, status?: number) => void
   onDone?: () => void
 }
 
@@ -103,7 +104,7 @@ async function _doStream(
 
     if (!response.ok) {
       const err = await response.json().catch(() => ({ detail: '请求失败' }))
-      callbacks.onError?.(err.detail || '请求失败')
+      callbacks.onError?.(err.detail || '请求失败', response.status)
       return
     }
 
@@ -175,6 +176,7 @@ export async function sseChatStream(
   options: SSEOptions = {},
 ): Promise<void> {
   let lastError = ''
+  let lastStatus: number | undefined
 
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
     if (attempt > 0) {
@@ -194,7 +196,7 @@ export async function sseChatStream(
           // 终审修订：链式调用调用方 onDone——原写法 {...callbacks, onDone: ...} 会把
           // 调用方传入的 onDone 整体覆盖（既有隐患），Task 10 的会话列表刷新依赖它
           onDone: () => { done = true; callbacks.onDone?.() },
-          onError: (msg) => { errorMsg = msg },
+          onError: (msg, status) => { errorMsg = msg; lastStatus = status },
         },
         signal,
         options,
@@ -219,5 +221,5 @@ export async function sseChatStream(
     break
   }
 
-  callbacks.onError?.(lastError || '请求失败，已重试多次')
+  callbacks.onError?.(lastError || '请求失败，已重试多次', lastStatus)
 }

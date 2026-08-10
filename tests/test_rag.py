@@ -266,6 +266,30 @@ class TestMaskPii:
         assert "me@163.com" not in joined
         assert "187****95" in joined
 
+    def test_pii_exempt_file_keeps_contact_plaintext(self, tmp_path):
+        """08-09 方案 T2：PII_EXEMPT 白名单文件的 chunk 保留联系方式原文。"""
+        src = tmp_path / "常见问题"
+        src.mkdir()
+        p = src / "13-联系方式.md"
+        text = "# 联系方式\n\n邮箱：xiehaoyu12138@163.com，微信：xhy18711807395"
+        p.write_text(text, encoding="utf-8")
+        chunks = chunk_markdown(p, text, tmp_path)
+        joined = "".join(c["content"] for c in chunks)
+        assert "xiehaoyu12138@163.com" in joined
+        assert "xhy18711807395" in joined
+
+    def test_pii_exempt_matches_exact_relative_path(self, tmp_path):
+        """豁免按相对路径精确匹配：同名文件在其他目录下仍须脱敏。"""
+        src = tmp_path / "简历"
+        src.mkdir()
+        p = src / "13-联系方式.md"
+        text = "# 联系方式\n\n邮箱：xiehaoyu12138@163.com"
+        p.write_text(text, encoding="utf-8")
+        chunks = chunk_markdown(p, text, tmp_path)
+        joined = "".join(c["content"] for c in chunks)
+        assert "xiehaoyu12138@163.com" not in joined
+        assert "x***@163.com" in joined
+
 
 # ── Hit dataclass tests ───────────────────────────────────────
 

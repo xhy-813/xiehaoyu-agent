@@ -199,6 +199,7 @@ START → planner → tool_router → introduce_me/query_data/visualize/explain_
 - 2026-08-06：Text2SQL 评测 8 轮迭代：50 题基线 96%（EASY 100% / MEDIUM 100% / HARD 80%）；prompt v1.5、few-shot 扩至 10 组；评测器改为值指纹对齐、忽略列名
 - 2026-08-08：808 全项目审查整改（planner 解析回归、限流 XFF 绕过、SQL 执行护栏、中文注入模式、SSE 重试、知识库脱敏）；评测集去泄漏换题 8 道，无泄漏基线 96%（EASY 100% / MEDIUM 95% / HARD 90%）
 - 2026-08-09：docs/ 归档重组（reviews / design / plans / references 四类 + 统一日期命名）+ 各模块 README 漂移修复（backend/chatbi/agent/rag/frontend/tests）+ 根 README 项目结构改为目录级 + 时间线以本文件为单一事实源
+- 2026-08-10：面试官视角体验优化 T1-T4 实施（[08-09 方案](docs/design/2026-08-09-面试官视角体验优化方案.md)）：秋招文案口径统一 + 新增 00-求职意向权威事实源；联系方式放开（ingest PII 豁免白名单 + 13-联系方式.md）；流式期间切会话 confirm 中断；citations 引用来源折叠区、429 限流文案透传、Olist 公开数据集标注、快捷问题重设计为完整演示链、错误气泡 CSS 变量化、聊天页转化出口（联系我弹层 + /resume.pdf 下载）、移动端侧栏 overlay 抽屉、prefers-color-scheme 跟随系统、流式 60s 中间态提示；persona v1.3.0 / explain v1.2.1；向量库重建（153 chunks）；303 单测全绿
 - 迭代计划：秋招前（2026-09）持续打磨
 
 ## 相关资源

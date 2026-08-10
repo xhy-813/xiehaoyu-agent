@@ -24,6 +24,7 @@
         :key="s.id"
         class="ss-item"
         :class="{ active: s.id === sessions.currentId }"
+        :title="chat.isStreaming ? '生成回答中，点击切换将中断' : undefined"
         @click="onSelect(s.id)"
       >
         <input
@@ -85,12 +86,22 @@ function onSearchInput() {
 }
 
 async function onNew() {
+  // 同 T3：开始新会话也是一种切换，流式期间需先确认中断
+  if (chat.isStreaming) {
+    if (!window.confirm('当前正在生成回答，开始新会话将中断本次回答，是否继续？')) return
+    chat.stopStreaming()
+  }
   chat.clearChat()
   emit('select')
 }
 
 async function onSelect(id: string) {
   if (id === sessions.currentId) return
+  // 08-09 方案 T3：流式期间切换会话 = 确认后中断当前流（参考 CopilotKit 切换 thread 自动 abortRun）
+  if (chat.isStreaming) {
+    if (!window.confirm('当前正在生成回答，切换会话将中断本次回答，是否继续？')) return
+    chat.stopStreaming()
+  }
   await chat.loadSession(id)
   emit('select')
 }

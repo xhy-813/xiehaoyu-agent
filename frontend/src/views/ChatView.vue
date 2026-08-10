@@ -15,6 +15,33 @@
         </div>
       </div>
       <div class="cf-right">
+        <NPopover trigger="click" placement="bottom-end">
+          <template #trigger>
+            <button class="cf-action" aria-label="联系我" title="联系我">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+              <span>联系我</span>
+            </button>
+          </template>
+          <div class="cf-contact">
+            <div class="cf-contact-row">
+              <span class="cf-contact-label">邮箱</span>
+              <button class="cf-contact-value" @click="copy(profile.email)">
+                {{ profile.email }}<em v-if="copied === profile.email">已复制 ✓</em>
+              </button>
+            </div>
+            <div class="cf-contact-row">
+              <span class="cf-contact-label">微信</span>
+              <button class="cf-contact-value" @click="copy(profile.wechat)">
+                {{ profile.wechat }}<em v-if="copied === profile.wechat">已复制 ✓</em>
+              </button>
+            </div>
+            <div class="cf-contact-tip">点击复制 · 添加微信请备注来意</div>
+          </div>
+        </NPopover>
+        <a class="cf-action" href="/resume.pdf" download="谢浩宇-简历.pdf" title="下载简历 PDF">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          <span>下载简历</span>
+        </a>
         <button
           v-if="chat.messages.length > 0 && !chat.isStreaming"
           class="cf-clear"
@@ -33,6 +60,8 @@
     </header>
     <div class="cf-main">
       <SessionSidebar v-show="sidebarOpen" @close="sidebarOpen = false" @select="onSidebarSelect" />
+      <!-- T4-8：移动端 overlay 抽屉的遮罩，点击外部收起 -->
+      <div v-if="!isDesktop && sidebarOpen" class="cf-scrim" @click="sidebarOpen = false" />
       <div class="cf-body">
         <ChatWidget>
           <template #empty>
@@ -50,20 +79,30 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { NPopover } from 'naive-ui'
 import ChatWidget from '@/components/chat/ChatWidget.vue'
 import WelcomeScreen from '@/components/chat/WelcomeScreen.vue'
 import SessionSidebar from '@/components/chat/SessionSidebar.vue'
 import { useChatStore } from '@/stores/chat'
 import { useSessionsStore } from '@/stores/sessions'
-import { useEscapeKey } from '@/composables/useMediaQuery'
+import { useMediaQuery, useEscapeKey } from '@/composables/useMediaQuery'
+import { profile } from '@/data/profile'
 
 const router = useRouter()
 const chat = useChatStore()
 const sessions = useSessionsStore()
 
-// 桌面 ≥768px 默认展开，移动端默认收起
-const isDesktop = window.matchMedia('(min-width: 768px)').matches
-const sidebarOpen = ref(isDesktop)
+// 桌面 ≥768px 默认展开，移动端默认收起（T4-8：移动端 overlay 抽屉模式）
+const isDesktop = useMediaQuery('(min-width: 768px)')
+const sidebarOpen = ref(window.matchMedia('(min-width: 768px)').matches)
+
+// T4-7：联系方式一键复制的「已复制」反馈
+const copied = ref('')
+async function copy(text: string) {
+  try { await navigator.clipboard.writeText(text) } catch { /* 剪贴板不可用（非 HTTPS/权限拒绝）时静默 */ }
+  copied.value = text
+  setTimeout(() => { if (copied.value === text) copied.value = '' }, 1500)
+}
 
 onMounted(() => {
   sessions.fetchList()
@@ -71,7 +110,7 @@ onMounted(() => {
 
 function onSidebarSelect() {
   // 移动端选择会话后自动收起侧栏
-  if (!window.matchMedia('(min-width: 768px)').matches) {
+  if (!isDesktop.value) {
     sidebarOpen.value = false
   }
 }
@@ -190,6 +229,68 @@ function ask(q: string) {
   background: rgba(255, 100, 100, 0.06);
   border-color: rgba(255, 100, 100, 0.2);
 }
+/* T4-7 转化出口按钮（联系我 / 下载简历） */
+.cf-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--text-2);
+  padding: 0.4rem 0.7rem;
+  border: 1px solid var(--chat-bar-border);
+  border-radius: 7px;
+  background: transparent;
+  cursor: pointer;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: color 0.2s, background 0.2s, border-color 0.2s;
+}
+.cf-action:hover {
+  color: var(--accent-strong);
+  background: var(--back-btn-hover-bg);
+  border-color: var(--back-btn-hover-border);
+}
+.cf-contact {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  min-width: 240px;
+}
+.cf-contact-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+.cf-contact-label {
+  font-size: 0.75rem;
+  color: var(--text-3);
+  flex-shrink: 0;
+}
+.cf-contact-value {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  color: var(--text-bright);
+  border: none;
+  background: transparent;
+  cursor: copy;
+  padding: 0.2rem 0.3rem;
+  border-radius: 5px;
+  transition: background 0.2s;
+}
+.cf-contact-value:hover { background: var(--back-btn-hover-bg); }
+.cf-contact-value em {
+  font-style: normal;
+  font-size: 0.7rem;
+  color: var(--accent-strong);
+  margin-left: 0.4rem;
+}
+.cf-contact-tip {
+  font-size: 0.68rem;
+  color: var(--text-3);
+  border-top: 1px dashed var(--border);
+  padding-top: 0.4rem;
+}
 .cf-status {
   display: flex;
   align-items: center;
@@ -224,13 +325,24 @@ function ask(q: string) {
   .cf-subtitle { display: none; }
   .cf-title { font-size: 0.85rem; }
   .cf-back span { display: none; }
+  .cf-action span { display: none; }
 }
+/* T4-8：移动端侧栏改为 overlay 抽屉（参考 CopilotKit desktop docked / mobile overlay 双模式） */
 @media (max-width: 767px) {
+  .cf-main { position: relative; }
   .session-sidebar {
     position: absolute;
+    top: 0;
+    left: 0;
+    bottom: 0;
     z-index: 30;
-    height: calc(100% - 57px);
     box-shadow: 4px 0 24px rgba(0, 0, 0, 0.25);
+  }
+  .cf-scrim {
+    position: absolute;
+    inset: 0;
+    z-index: 25;
+    background: rgba(0, 0, 0, 0.4);
   }
 }
 

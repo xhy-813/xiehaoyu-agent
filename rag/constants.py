@@ -77,9 +77,15 @@ class _ZhipuEmbeddingFunction:
         model: str = ZHIPU_EMBED_MODEL,
         dimensions: int = ZHIPU_EMBED_DIMENSIONS,
     ) -> None:
+        import httpx
         from openai import OpenAI
 
-        self._client = OpenAI(api_key=api_key, base_url=base_url)
+        # trust_env=False：不读系统/环境代理（智谱为国内 API；与 agent/llm_client.py 同因）
+        self._client = OpenAI(
+            api_key=api_key,
+            base_url=base_url,
+            http_client=httpx.Client(trust_env=False),
+        )
         self._model = model
         self._dimensions = dimensions
 

@@ -17,6 +17,7 @@ PrivateTmp=yes
 ProtectSystem=strict
 ReadWritePaths=/srv/xiehaoyu-agent/rag/data/
 ReadWritePaths=/srv/xiehaoyu-agent/chatbi/data/
+ReadWritePaths=/srv/xiehaoyu-agent/data/
 ProtectHome=yes
 
 [Install]

@@ -1,16 +1,20 @@
 """LLM natural-language interpretation of a query result.
 
 给定 (question, sql, df)，让 LLM 输出 3~5 条中文业务洞察。
+
+808 审查 M1：核心实现为异步（``explain_result_async``），HTTP 请求可被取消；
+``explain_result()`` 保留为同步门面供 smoke 脚本使用。
 """
 
 from __future__ import annotations
 
+import asyncio
 from pathlib import Path
 
 import pandas as pd
-from openai import OpenAI
+from openai import AsyncOpenAI
 
-from agent.llm_client import get_client
+from agent.llm_client import alogged_chat_create, get_async_client
 from configs.settings import settings
 
 
@@ -44,23 +48,36 @@ def _preview(df: pd.DataFrame, n: int = PREVIEW_ROWS) -> str:
     return head.to_string(index=False)
 
 
-def explain_result(question: str, sql: str, df: pd.DataFrame) -> str:
+async def explain_result_async(
+    question: str, sql: str, df: pd.DataFrame, client: AsyncOpenAI | None = None
+) -> str:
     system_role, user_template = _load_prompt()
     prompt = user_template.format(
         question=question,
         sql=sql,
         preview=_preview(df),
     )
-    client = get_client()
+    owns_client = client is None
+    client = client or get_async_client()
     try:
-        resp = client.chat.completions.create(
+        resp = await alogged_chat_create(
+            client,
             model=settings.deepseek_model,
             messages=[
                 {"role": "system", "content": system_role},
                 {"role": "user", "content": prompt},
             ],
             temperature=settings.explain_temperature,
+            caller="explain_result",
         )
         return (resp.choices[0].message.content or "").strip()
     except Exception as exc:
         raise RuntimeError(f"explain_result LLM call failed: {exc}") from exc
+    finally:
+        if owns_client:
+            await client.close()  # 自建客户端随用随关
+
+
+def explain_result(question: str, sql: str, df: pd.DataFrame) -> str:
+    """同步门面（smoke 脚本用）。异步链路请直接 await explain_result_async。"""
+    return asyncio.run(explain_result_async(question, sql, df))

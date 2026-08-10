@@ -2,6 +2,9 @@
   <div class="chat-fullscreen">
     <header class="cf-bar">
       <div class="cf-left">
+        <button class="cf-back" aria-label="会话列表" title="会话列表" @click="sidebarOpen = !sidebarOpen">
+          <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+        </button>
         <button class="cf-back" aria-label="返回作品集" @click="goBack">
           <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></svg>
           <span>返回作品集</span>
@@ -28,28 +31,50 @@
         </div>
       </div>
     </header>
-    <div class="cf-body">
-      <ChatWidget>
-        <template #empty>
-          <WelcomeScreen
-            :disabled="chat.isStreaming"
-            @ask="ask"
-          />
-        </template>
-      </ChatWidget>
+    <div class="cf-main">
+      <SessionSidebar v-show="sidebarOpen" @close="sidebarOpen = false" @select="onSidebarSelect" />
+      <div class="cf-body">
+        <ChatWidget>
+          <template #empty>
+            <WelcomeScreen
+              :disabled="chat.isStreaming"
+              @ask="ask"
+            />
+          </template>
+        </ChatWidget>
+      </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
+import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import ChatWidget from '@/components/chat/ChatWidget.vue'
 import WelcomeScreen from '@/components/chat/WelcomeScreen.vue'
+import SessionSidebar from '@/components/chat/SessionSidebar.vue'
 import { useChatStore } from '@/stores/chat'
+import { useSessionsStore } from '@/stores/sessions'
 import { useEscapeKey } from '@/composables/useMediaQuery'
 
 const router = useRouter()
 const chat = useChatStore()
+const sessions = useSessionsStore()
+
+// 桌面 ≥768px 默认展开，移动端默认收起
+const isDesktop = window.matchMedia('(min-width: 768px)').matches
+const sidebarOpen = ref(isDesktop)
+
+onMounted(() => {
+  sessions.fetchList()
+})
+
+function onSidebarSelect() {
+  // 移动端选择会话后自动收起侧栏
+  if (!window.matchMedia('(min-width: 768px)').matches) {
+    sidebarOpen.value = false
+  }
+}
 
 function goBack() {
   if (window.history.length > 1) {
@@ -68,6 +93,7 @@ function ask(q: string) {
 
 <style scoped>
 .chat-fullscreen {
+  position: relative;
   display: flex;
   flex-direction: column;
   height: 100vh;
@@ -180,9 +206,15 @@ function ask(q: string) {
   background: var(--accent-strong);
   animation: pulse-glow 2s infinite;
 }
+.cf-main {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+}
 .cf-body {
   flex: 1;
   min-height: 0;
+  min-width: 0;
   max-width: 900px;
   width: 100%;
   margin: 0 auto;
@@ -192,6 +224,14 @@ function ask(q: string) {
   .cf-subtitle { display: none; }
   .cf-title { font-size: 0.85rem; }
   .cf-back span { display: none; }
+}
+@media (max-width: 767px) {
+  .session-sidebar {
+    position: absolute;
+    z-index: 30;
+    height: calc(100% - 57px);
+    box-shadow: 4px 0 24px rgba(0, 0, 0, 0.25);
+  }
 }
 
 </style>

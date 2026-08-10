@@ -35,18 +35,25 @@ echo "[3/6] 安装 Python 依赖..."
 cd "$APP_DIR"
 python3 -m venv .venv
 source .venv/bin/activate
-pip install -q -r requirements.txt
-pip install -q fastapi uvicorn
+# 使用锁定版本（requirements.lock）保证部署可复现（808 审查 M6）；
+# lock 已含 fastapi/uvicorn 等全部运行依赖
+pip install -q -r requirements.lock
 
 # --- 4. Environment config ---
 echo "[4/6] 配置环境变量..."
 if [ ! -f "$APP_DIR/.env" ]; then
     cp "$APP_DIR/.env.example" "$APP_DIR/.env"
+    # 808 审查 M8：.env 含 API 密钥，收紧权限（服务以 www-data 运行需可读）
+    chown root:www-data "$APP_DIR/.env"
+    chmod 640 "$APP_DIR/.env"
     echo "  >>> 请编辑 $APP_DIR/.env 填入真实密钥后重新运行此脚本"
     echo "  >>> 需要配置: DEEPSEEK_API_KEY"
     exit 1
 fi
 echo "  .env 已存在，跳过"
+# 已有 .env 同样确保权限收紧
+chown root:www-data "$APP_DIR/.env"
+chmod 640 "$APP_DIR/.env"
 
 # --- 5. Build frontend ---
 echo "[5/6] 构建前端..."

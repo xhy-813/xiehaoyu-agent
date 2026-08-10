@@ -11,7 +11,7 @@ from __future__ import annotations
 import sqlite3
 import tempfile
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pandas as pd
 import pytest
@@ -103,8 +103,11 @@ def clear_engine_cache():
 
 @pytest.fixture
 def mock_client() -> MagicMock:
-    """Return a MagicMock that behaves like an OpenAI client."""
-    return MagicMock()
+    """Return a MagicMock that behaves like an AsyncOpenAI client (M1)."""
+    m = MagicMock()
+    m.chat.completions.create = AsyncMock()
+    m.close = AsyncMock()  # query_data_async 的 finally 会 await close()
+    return m
 
 
 # ── _build_prompt tests ───────────────────────────────────────
@@ -112,24 +115,24 @@ def mock_client() -> MagicMock:
 
 class TestBuildPrompt:
     def test_includes_schema(self):
-        prompt = _build_prompt("2018 年每月订单数")
-        assert "customers" in prompt
-        assert "orders" in prompt
-        assert "order_items" in prompt
+        system_role, user_prompt = _build_prompt("2018 年每月订单数")
+        assert "customers" in user_prompt
+        assert "orders" in user_prompt
+        assert "order_items" in user_prompt
 
     def test_includes_few_shots(self):
-        prompt = _build_prompt("2018 年每月订单数")
-        assert "2018 年每月的订单数" in prompt
-        assert "strftime" in prompt
+        system_role, user_prompt = _build_prompt("2018 年每月订单数")
+        assert "2018 年每月的订单数" in user_prompt
+        assert "strftime" in user_prompt
 
     def test_includes_user_question(self):
-        prompt = _build_prompt("2018 年每月订单数")
-        assert "2018 年每月订单数" in prompt
+        system_role, user_prompt = _build_prompt("2018 年每月订单数")
+        assert "2018 年每月订单数" in user_prompt
 
     def test_includes_quality_rules(self):
-        prompt = _build_prompt("任意问题")
-        assert "SQL 编写规范" in prompt
-        assert "反面示例" in prompt
+        system_role, user_prompt = _build_prompt("任意问题")
+        assert "SQL 编写规范" in user_prompt
+        assert "反面示例" in user_prompt
 
 
 # ── query_data – success path ─────────────────────────────────
@@ -142,7 +145,7 @@ class TestQueryDataSuccess:
             choices=[MagicMock(message=MagicMock(content="SELECT COUNT(*) AS cnt FROM orders;"))]
         )
 
-        with patch("agent.tools.query_data.get_client", return_value=mock_client):
+        with patch("agent.tools.query_data.get_async_client", return_value=mock_client):
             result = query_data("how many orders?", db_path=Path(test_db))
 
         assert isinstance(result, QueryResult)
@@ -157,7 +160,7 @@ class TestQueryDataSuccess:
             choices=[MagicMock(message=MagicMock(content=sql))]
         )
 
-        with patch("agent.tools.query_data.get_client", return_value=mock_client):
+        with patch("agent.tools.query_data.get_async_client", return_value=mock_client):
             result = query_data("state distribution", db_path=Path(test_db))
 
         assert result.sql.rstrip(";").strip() == sql.rstrip(";").strip()
@@ -168,7 +171,7 @@ class TestQueryDataSuccess:
             choices=[MagicMock(message=MagicMock(content="SELECT * FROM orders;"))]
         )
 
-        with patch("agent.tools.query_data.get_client", return_value=mock_client):
+        with patch("agent.tools.query_data.get_async_client", return_value=mock_client):
             result = query_data("all orders", db_path=Path(test_db))
 
         assert result.df.shape == (3, 4)
@@ -185,7 +188,7 @@ class TestQueryDataRetryValidation:
             MagicMock(choices=[MagicMock(message=MagicMock(content="SELECT COUNT(*) FROM orders;"))]),
         ]
 
-        with patch("agent.tools.query_data.get_client", return_value=mock_client):
+        with patch("agent.tools.query_data.get_async_client", return_value=mock_client):
             result = query_data("test", db_path=Path(test_db))
 
         assert result.attempts == 2
@@ -201,7 +204,7 @@ class TestQueryDataRetryValidation:
             MagicMock(choices=[MagicMock(message=MagicMock(content="SELECT COUNT(*) FROM orders;"))]),
         ]
 
-        with patch("agent.tools.query_data.get_client", return_value=mock_client):
+        with patch("agent.tools.query_data.get_async_client", return_value=mock_client):
             result = query_data("test", db_path=Path(test_db))
 
         assert result.attempts == 2
@@ -219,7 +222,7 @@ class TestQueryDataRetryExhausted:
             choices=[MagicMock(message=MagicMock(content="INSERT INTO orders VALUES (1);"))]
         )
 
-        with patch("agent.tools.query_data.get_client", return_value=mock_client):
+        with patch("agent.tools.query_data.get_async_client", return_value=mock_client):
             with pytest.raises(RuntimeError, match="Text2SQL failed"):
                 query_data("test", max_attempts=2, db_path=Path(test_db))
 
@@ -228,7 +231,7 @@ class TestQueryDataRetryExhausted:
             choices=[MagicMock(message=MagicMock(content="INSERT INTO orders VALUES (1);"))]
         )
 
-        with patch("agent.tools.query_data.get_client", return_value=mock_client):
+        with patch("agent.tools.query_data.get_async_client", return_value=mock_client):
             try:
                 query_data("test", max_attempts=3, db_path=Path(test_db))
             except RuntimeError as e:
@@ -247,7 +250,7 @@ class TestQueryDataLLMErrors:
             MagicMock(choices=[MagicMock(message=MagicMock(content="SELECT COUNT(*) FROM orders;"))]),
         ]
 
-        with patch("agent.tools.query_data.get_client", return_value=mock_client):
+        with patch("agent.tools.query_data.get_async_client", return_value=mock_client):
             result = query_data("test", max_attempts=3, db_path=Path(test_db))
 
         assert result.attempts == 2
@@ -260,7 +263,7 @@ class TestQueryDataLLMErrors:
             MagicMock(choices=[MagicMock(message=MagicMock(content="SELECT COUNT(*) FROM orders;"))]),
         ]
 
-        with patch("agent.tools.query_data.get_client", return_value=mock_client):
+        with patch("agent.tools.query_data.get_async_client", return_value=mock_client):
             result = query_data("test", max_attempts=3, db_path=Path(test_db))
 
         assert result.attempts == 2
@@ -279,7 +282,7 @@ class TestQueryDataComplexSQL:
             )))]
         )
 
-        with patch("agent.tools.query_data.get_client", return_value=mock_client):
+        with patch("agent.tools.query_data.get_async_client", return_value=mock_client):
             result = query_data("delivered count", db_path=Path(test_db))
 
         assert result.attempts == 1
@@ -293,7 +296,7 @@ class TestQueryDataComplexSQL:
             )))]
         )
 
-        with patch("agent.tools.query_data.get_client", return_value=mock_client):
+        with patch("agent.tools.query_data.get_async_client", return_value=mock_client):
             result = query_data("status breakdown", db_path=Path(test_db))
 
         assert result.attempts == 1
@@ -309,7 +312,7 @@ class TestQueryDataTiming:
             choices=[MagicMock(message=MagicMock(content="SELECT 1;"))]
         )
 
-        with patch("agent.tools.query_data.get_client", return_value=mock_client):
+        with patch("agent.tools.query_data.get_async_client", return_value=mock_client):
             result = query_data("test", db_path=Path(test_db))
 
         assert result.elapsed_ms > 0
@@ -327,7 +330,7 @@ class TestQueryDataEdgeCases:
             )))]
         )
 
-        with patch("agent.tools.query_data.get_client", return_value=mock_client):
+        with patch("agent.tools.query_data.get_async_client", return_value=mock_client):
             result = query_data("canceled orders", db_path=Path(test_db))
 
         assert result.attempts == 1
@@ -338,7 +341,7 @@ class TestQueryDataEdgeCases:
             choices=[MagicMock(message=MagicMock(content="SELECT COUNT(*) FROM orders;"))]
         )
 
-        with patch("agent.tools.query_data.get_client", return_value=mock_client):
+        with patch("agent.tools.query_data.get_async_client", return_value=mock_client):
             result = query_data("2018年 订单数? (所有)", db_path=Path(test_db))
 
         assert result.attempts == 1
@@ -354,3 +357,51 @@ class TestSQLValidationErrorIntegration:
 
     def test_validation_error_is_value_error(self):
         assert issubclass(SQLValidationError, ValueError)
+
+
+# ── 808 审查 H4：执行层资源护栏 ────────────────────────────
+
+
+class TestExecutionGuardrails:
+    def test_statement_timeout_aborts_long_query(self, test_db, mock_client, monkeypatch):
+        """语句超时：超过 STATEMENT_TIMEOUT_S 的查询被 progress handler 中断，
+        按执行失败处理（重试耗尽后 RuntimeError），而非线程被永久占住。"""
+        import agent.tools.query_data as qd
+
+        monkeypatch.setattr(qd, "STATEMENT_TIMEOUT_S", -1)  # 到期即中止
+        monkeypatch.setattr(qd, "_PROGRESS_TICKS", 1)  # 每条指令都回调 → 必然触发
+        mock_client.chat.completions.create.return_value = MagicMock(
+            choices=[MagicMock(message=MagicMock(
+                content="SELECT COUNT(*) FROM orders a, orders b, orders c;"
+            ))]
+        )
+
+        with patch("agent.tools.query_data.get_async_client", return_value=mock_client):
+            with pytest.raises(RuntimeError, match="Text2SQL failed"):
+                query_data("test", max_attempts=1, db_path=Path(test_db))
+
+    def test_result_rows_capped(self, test_db, mock_client, monkeypatch):
+        """结果集行数硬上限：超出截断。"""
+        import agent.tools.query_data as qd
+
+        monkeypatch.setattr(qd, "MAX_RESULT_ROWS", 2)
+        mock_client.chat.completions.create.return_value = MagicMock(
+            choices=[MagicMock(message=MagicMock(content="SELECT * FROM orders;"))]
+        )
+
+        with patch("agent.tools.query_data.get_async_client", return_value=mock_client):
+            result = query_data("all orders", db_path=Path(test_db))
+
+        assert len(result.df) == 2  # 原表 3 行，截断至 2
+
+    def test_engine_is_read_only(self, test_db, mock_client):
+        """只读模式：即使绕过校验器，连接级写操作也被拒绝。"""
+        import agent.tools.query_data as qd
+
+        engine = qd._get_engine(test_db)
+        from sqlalchemy import text as sa_text
+        from sqlalchemy.exc import SQLAlchemyError
+
+        with engine.connect() as conn:
+            with pytest.raises(SQLAlchemyError):
+                conn.execute(sa_text("CREATE TABLE hacked (id INTEGER)"))

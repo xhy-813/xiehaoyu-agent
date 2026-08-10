@@ -144,7 +144,7 @@ START → planner → tool_router → introduce_me/query_data/visualize/explain_
 - [X] 跑基线准确率，针对错误 case 补充 few-shot、优化 prompt，再跑一次（共 8 轮迭代）
 - [ ] README 补齐：demo 截图/GIF
 
-**验收**：Text2SQL 准确率 96%（48/50），EASY 100% / MEDIUM 100% / HARD 80% ✅（目标 ≥70%）
+**验收**：Text2SQL 准确率 96%（48/50），EASY 100% / MEDIUM 95% / HARD 90% ✅（目标 ≥70%；2026-08-08 去泄漏换题后的无重叠基线）
 
 ## 后续迭代（MVP 之后）
 
@@ -174,7 +174,7 @@ START → planner → tool_router → introduce_me/query_data/visualize/explain_
 3. **结果展示从独立面板改为内联**：ResultPanel 组件保留但未使用，结果展示改为内联到 ChatMessage.vue 中，每条消息独立展示自己的图表/数据/轨迹
 4. **动画状态管理内置 store**：不单独抽 `useAvatarState` composable，`chat.ts` store 直接内置动画状态管理逻辑，更简洁
 5. **Streamlit 已移除**：`app.py` + `ui/` 目录已在架构迁移完成后清理，正式入口为 Vue 3 + FastAPI
-6. **Embedding 双模式**：本地 BGE 在 2C4G 服务器上内存吃紧 → `rag/constants.py` 提供工厂函数，设 `EMBED_API_KEY` 即切换智谱 embedding-3 API（零本地内存），未设则降级本地 BGE（见 [API_Embedding改造方案](docs/API_Embedding改造方案.md)）
+6. **Embedding 双模式**：本地 BGE 在 2C4G 服务器上内存吃紧 → `rag/constants.py` 提供工厂函数，设 `EMBED_API_KEY` 即切换智谱 embedding-3 API（零本地内存），未设则降级本地 BGE（见 [API_Embedding改造方案](docs/design/2026-08-04-API-Embedding改造方案.md)）
 7. **评测脚本独立命名**：50 题基线评测放 `tests/eval_text2sql.py`（需真实 API Key，执行准确率判定），`test_text2sql.py` 保留为 mock LLM 的 pipeline 单元测试
 
 ## 时间线
@@ -197,6 +197,8 @@ START → planner → tool_router → introduce_me/query_data/visualize/explain_
 - 2026-08-05：提示词体系全面优化 + ChatMessage 拆分（MessageBubble + InlineResult）+ planner 空响应处理
 - 2026-08-06：移除 Streamlit UI 残留（app.py + ui/）+ planner 健壮性修复（空响应 fallback 路由、裸控制字符转义）
 - 2026-08-06：Text2SQL 评测 8 轮迭代：50 题基线 96%（EASY 100% / MEDIUM 100% / HARD 80%）；prompt v1.5、few-shot 扩至 10 组；评测器改为值指纹对齐、忽略列名
+- 2026-08-08：808 全项目审查整改（planner 解析回归、限流 XFF 绕过、SQL 执行护栏、中文注入模式、SSE 重试、知识库脱敏）；评测集去泄漏换题 8 道，无泄漏基线 96%（EASY 100% / MEDIUM 95% / HARD 90%）
+- 2026-08-09：docs/ 归档重组（reviews / design / plans / references 四类 + 统一日期命名）+ 各模块 README 漂移修复（backend/chatbi/agent/rag/frontend/tests）+ 根 README 项目结构改为目录级 + 时间线以本文件为单一事实源
 - 迭代计划：秋招前（2026-09）持续打磨
 
 ## 相关资源
@@ -205,6 +207,6 @@ START → planner → tool_router → introduce_me/query_data/visualize/explain_
 - [简历-数据工程方向](../../career/resume-数据工程.md)
 - [K12 数仓项目](../../school/基于K12线上教育场景-数仓分层＆PowerBI可视化看板/)
 - [个人知识库首页](../../index.md)
-- [Vue3-FastAPI 重构方案](docs/Vue3-FastAPI-重构方案.md)
-- [代码审查记录](docs/代码审查/)
-- [形象整合方案](docs/形象整合方案/)
+- [Vue3-FastAPI 重构方案](docs/design/2026-07-24-Vue3-FastAPI-重构方案.md)
+- [审查报告归档](docs/reviews/)
+- [形象整合方案](docs/design/2026-07-25-形象整合方案/)

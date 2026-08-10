@@ -30,6 +30,7 @@ introduce_me 工具：检索片段 + persona prompt → LLM 生成第一人称�
 - 按 Markdown H1/H2/H3 标题切片，标题路径作为 breadcrumb 写入片段头（如 `# 项目 > Xiehaoyu-Agent`）；首段标题前的正文也保留。
 - 单段超过 800 字时硬切，重叠 80 字，优先在句读边界（。！？.!?）下刀。
 - chunk id = `文件路径::序号::md5`，幂等可重建。
+- **入库前 PII 脱敏**（`_mask_pii()`）：手机号打码为前 3 后 2（`187****95`）、邮箱本地部分只留首字符（`x***@163.com`），embedding 与存储同源——公网 RAG 检索不会泄出原始联系方式。
 - 入库采用**原子替换**：先写入临时 collection，全量完成后删旧换新，重建期间检索不中断。
 
 ## Embedding 双模式
@@ -52,16 +53,19 @@ python -m rag.ingest --force    # 跳过确认直接重建
 ## 检索 API
 
 ```python
-from rag.retriever import retrieve, count, invalidate_cache
+from rag.retriever import retrieve, retrieve_result, count, invalidate_cache
 
 hits = retrieve("你 K12 项目做了什么", top_k=5)   # introduce_me 默认 top_k=10
 for h in hits:
     print(h.source, h.heading, h.similarity)    # similarity = 1 - cosine distance
+
+res = retrieve_result("...", top_k=5)   # RetrievalResult(hits, degraded)
+res.degraded   # True = 检索基础设施故障（区别于"无匹配"的空结果）
 ```
 
 - 默认相似度阈值 `min_similarity=0.3`，低于阈值的片段被过滤并记日志。
 - collection 句柄用 `lru_cache` 缓存；重新入库后调 `invalidate_cache()` 失效缓存。
-- 知识库为空或不可用时返回空列表（不抛异常），由上层诚实兜底。
+- 知识库为空/不可用时不抛异常：`retrieve()` 返回空列表；`retrieve_result()` 额外给出 `degraded` 标志，`introduce_me` 据此指示 LLM 诚实说明"知识库暂不可用"而不是凭人设编造。
 
 ## 测试
 

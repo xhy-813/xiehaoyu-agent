@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -73,6 +74,45 @@ class TestExtractJson:
         result = _extract_json(raw)
         assert result["action"] == "finalize"
 
+    # ── 808 审查 H1 回归用例：多行 JSON 必须可解析 ──
+
+    def test_pretty_multiline_json(self):
+        """LLM 美化输出（结构性换行/缩进）必须正常解析（808 审查 H1 回归）。
+
+        _sanitize_control_chars 只允许转义字符串值内部的控制字符；
+        token 之间的换行是合法 JSON 空白，不得破坏。
+        """
+        raw = '{\n  "action": "finalize",\n  "answer": "你好"\n}'
+        result = _extract_json(raw)
+        assert result == {"action": "finalize", "answer": "你好"}
+
+    def test_fenced_multiline_json(self):
+        """markdown 围栏包裹的多行 JSON 必须正常解析（808 审查 H1 回归）。"""
+        raw = (
+            '```json\n'
+            '{\n'
+            '  "action": "call",\n'
+            '  "tool": "query_data",\n'
+            '  "args": {"question": "订单数"}\n'
+            '}\n'
+            '```'
+        )
+        result = _extract_json(raw)
+        assert result["action"] == "call"
+        assert result["tool"] == "query_data"
+
+    def test_literal_newline_inside_string_still_escaped(self):
+        """修复目标场景不得回退：字符串值内的裸换行仍被转义后可解析。"""
+        raw = '{"action": "finalize", "answer": "第一行\n第二行"}'
+        result = _extract_json(raw)
+        assert result["answer"] == "第一行\n第二行"
+
+    def test_brace_inside_string_not_counted(self):
+        """兜底大括号计数必须跳过字符串值内部的括号。"""
+        raw = '{"action": "finalize", "answer": "用 } 收尾"}\ntrailing {"action": "call"}'
+        result = _extract_json(raw)
+        assert result["answer"] == "用 } 收尾"
+
 
 # ── plan() tests ────────────────────────────────────────────
 
@@ -80,7 +120,9 @@ class TestExtractJson:
 class TestPlan:
     @pytest.fixture
     def mock_client(self):
-        return MagicMock()
+        m = MagicMock()
+        m.chat.completions.create = AsyncMock()
+        return m
 
     def test_call_action(self, mock_client):
         mock_client.chat.completions.create.return_value = MagicMock(
@@ -92,7 +134,7 @@ class TestPlan:
                 )
             ]
         )
-        result = plan("hello", [], client=mock_client)
+        result = asyncio.run(plan("hello", [], client=mock_client))
         assert result["action"] == "call"
         assert result["tool"] == "query_data"
 
@@ -106,7 +148,7 @@ class TestPlan:
                 )
             ]
         )
-        result = plan("你好", [], client=mock_client)
+        result = asyncio.run(plan("你好", [], client=mock_client))
         assert result["action"] == "finalize"
         assert "谢浩宇" in result["answer"]
 
@@ -127,7 +169,7 @@ class TestPlan:
                 "summary": "SQL: SELECT ...\n行数: 12\n前10行:\n...",
             }
         ]
-        result = plan("2018 年每月订单数", trace, client=mock_client)
+        result = asyncio.run(plan("2018 年每月订单数", trace, client=mock_client))
         assert result["action"] == "finalize"
 
     def test_empty_trace(self, mock_client):
@@ -140,23 +182,26 @@ class TestPlan:
                 )
             ]
         )
-        result = plan("你是谁", [], client=mock_client)
+        result = asyncio.run(plan("你是谁", [], client=mock_client))
         assert result["action"] == "call"
         assert result["tool"] == "introduce_me"
 
     def test_uses_default_client(self):
-        with patch("agent.planner.get_client") as mock_get_client:
+        with patch("agent.planner.get_async_client") as mock_get_async_client:
             c = MagicMock()
-            c.chat.completions.create.return_value = MagicMock(
-                choices=[
-                    MagicMock(
-                        message=MagicMock(
-                            content='{"action": "finalize", "answer": "ok"}'
+            c.chat.completions.create = AsyncMock(
+                return_value=MagicMock(
+                    choices=[
+                        MagicMock(
+                            message=MagicMock(
+                                content='{"action": "finalize", "answer": "ok"}'
+                            )
                         )
-                    )
-                ]
+                    ]
+                )
             )
-            mock_get_client.return_value = c
-            result = plan("test", [])
+            c.close = AsyncMock()  # 未注入 client 时 finally 会 await close()
+            mock_get_async_client.return_value = c
+            result = asyncio.run(plan("test", []))
             assert result["action"] == "finalize"
-            mock_get_client.assert_called_once()
+            mock_get_async_client.assert_called_once()

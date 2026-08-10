@@ -33,6 +33,7 @@
         @send="handleSend"
         @stop="chat.stopStreaming"
       />
+      <p class="privacy-note">对话记录仅保存 30 天，到期自动删除，请勿输入敏感个人信息</p>
     </div>
   </div>
 </template>
@@ -152,6 +153,13 @@ onBeforeUnmount(() => {
 @media (max-width: 768px) {
   .messages-area { padding: 0.75rem 1rem 0.5rem; }
   .input-area { padding: 0.5rem 0.75rem 0.75rem; }
+}
+.privacy-note {
+  max-width: 768px;
+  margin: 0.35rem auto 0;
+  font-size: 0.66rem;
+  color: var(--text-3);
+  text-align: center;
 }
 
 </style>

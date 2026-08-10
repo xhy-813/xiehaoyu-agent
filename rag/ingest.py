@@ -1,9 +1,7 @@
 """Ingest personal knowledge-base markdown into a Chroma collection.
 
 用法：
-    python -m rag.ingest \\
-        --src "data/知识库" \\
-        --db  rag/data/chroma
+    python -m rag.ingest --src "data/知识库"  --db  rag/data/chroma  
 
 - 扫描以下顶层目录下所有 .md：简历, 自我介绍, 常见问题, 项目, 工作经历
 - 显式排除：secrets/、.git/、.agents/、.claude/、.codex/、.workbuddy/
@@ -36,6 +34,21 @@ from rag.constants import COLLECTION, get_embedding_function  # noqa: E402
 MAX_CHARS = 800
 OVERLAP = 80
 BATCH_SIZE = 200
+
+# ── PII 脱敏（808 审查 C1，2026-08-08 决策）────────────────
+# 手机号/邮箱在写入向量库前打码：向量库会随公网 RAG 问答被检索引用，
+# 源文件保持原样（知识库源文件不纳入 git、仅本机持有）。
+_PHONE_RE = re.compile(r"(?<!\d)1[3-9]\d{9}(?!\d)")
+_EMAIL_RE = re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}")
+
+
+def _mask_pii(text: str) -> str:
+    """手机号保留前 3 后 2 位；邮箱本地部分只留首字符。"""
+    text = _PHONE_RE.sub(lambda m: m.group(0)[:3] + "****" + m.group(0)[-2:], text)
+    return _EMAIL_RE.sub(
+        lambda m: m.group(0).split("@", 1)[0][:1] + "***@" + m.group(0).split("@", 1)[1],
+        text,
+    )
 
 
 # ── File discovery ────────────────────────────────────────
@@ -137,6 +150,7 @@ def chunk_markdown(path: Path, text: str, source_root: Path) -> list[dict]:
     for heading, body in split_by_heading(text):
         for piece in hard_split(body):
             content = f"# {heading}\n\n{piece}" if heading else piece
+            content = _mask_pii(content)  # 入库前脱敏（embedding 与存储都用打码文本）
             digest = hashlib.md5(content.encode("utf-8")).hexdigest()[:16]
             out.append(
                 {

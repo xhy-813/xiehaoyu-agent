@@ -1,7 +1,8 @@
 import { defineStore } from 'pinia'
 import { ref, computed, watch } from 'vue'
-import { sseChatStream, type Artifact, type SSEChatEvent } from '@/utils/sse'
+import { sseChatStream, SSEStreamError, type Artifact, type SSEChatEvent } from '@/utils/sse'
 import type { AvatarState } from '@/components/shared/AnimatedAvatar.vue'
+import { useSessionsStore } from './sessions'
 
 export interface ToolTrace {
   tool: string
@@ -89,6 +90,21 @@ export const useChatStore = defineStore('chat', () => {
   async function sendMessage(question: string) {
     if (isStreaming.value) return
 
+    // 提前置位：防 await ensureSession 期间重入导致双建会话（终审修订）；
+    // 原有 step 3 的 isStreaming.value = true 保留即可（幂等）
+    isStreaming.value = true
+
+    // 幂等主流程：先确保持有 session_id，再发 chat（避免自动重试造成重复会话）
+    const sessions = useSessionsStore()
+    let sessionId: string
+    try {
+      sessionId = await sessions.ensureSession()
+    } catch {
+      streamError.value = '创建会话失败，请检查网络后重试'
+      isStreaming.value = false
+      return
+    }
+
     wasStopped.value = false
 
     // Abort any existing stream
@@ -148,14 +164,24 @@ export const useChatStore = defineStore('chat', () => {
           streamError.value = err
           assistantMsg.content = `执行失败：${err}`
         },
-      }, abortController.value.signal)
+        onDone: () => {
+          // 刷新列表排序/标题；标题由后端异步生成，5s 后再刷一次兜底
+          sessions.fetchList()
+          setTimeout(() => sessions.fetchList(), 5000)
+        },
+      }, abortController.value.signal, { sessionId })
     } catch (err: any) {
-      if (err.name === 'AbortError') {
-        assistantMsg.content = assistantMsg.content || '请求已取消'
-      } else if (err.message?.includes('timeout') || err.message?.includes('超时')) {
+      if (err instanceof SSEStreamError && err.kind === 'timeout') {
+        // 本地 120s 超时（后端可能仍在执行）：区别于用户主动停止（808 审查 M4）
         streamError.value = '请求超时'
         assistantMsg.content = '请求超时，请稍后重试。'
         assistantMsg.error = true
+      } else if (err instanceof SSEStreamError && err.kind === 'stream') {
+        streamError.value = '连接中断'
+        assistantMsg.content = '连接中断，请重试。'
+        assistantMsg.error = true
+      } else if (err.name === 'AbortError') {
+        assistantMsg.content = assistantMsg.content || '请求已取消'
       } else if (err.message?.includes('fetch') || err.message?.includes('network') || err.message?.includes('Network')) {
         streamError.value = '网络错误'
         assistantMsg.content = '网络连接失败，请检查网络后重试。'
@@ -190,6 +216,33 @@ export const useChatStore = defineStore('chat', () => {
     currentTool.value = null
     avatarState.value = 'idle'
     if (avatarTimer) { clearTimeout(avatarTimer); avatarTimer = null }
+    // 清空 = 开始新会话
+    useSessionsStore().currentId = null
+  }
+
+  /** 回放历史会话：消息 + trace 原样灌入，InlineResult 零改动渲染（设计文档 §5） */
+  async function loadSession(id: string) {
+    if (isStreaming.value) return
+    const sessions = useSessionsStore()
+    let data: Awaited<ReturnType<typeof sessions.loadReplay>>
+    try {
+      data = await sessions.loadReplay(id)
+    } catch {
+      streamError.value = '加载会话失败，请重试'
+      return
+    }
+    messages.value = data.messages.map((m) => ({
+      id: String(m.id),
+      role: m.role,
+      content: m.content,
+      steps: m.steps ?? undefined,
+      tools: m.tools ?? undefined,
+      trace: m.trace ?? undefined,
+      timestamp: new Date(m.created_at.replace(' ', 'T')).getTime() || Date.now(),
+    }))
+    currentTrace.value = []
+    streamError.value = null
+    sessions.currentId = id
   }
 
   return {
@@ -204,5 +257,6 @@ export const useChatStore = defineStore('chat', () => {
     sendMessage,
     stopStreaming,
     clearChat,
+    loadSession,
   }
 })

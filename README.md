@@ -79,155 +79,23 @@ START → planner → tool_router → introduce_me/query_data/visualize/explain_
 
 ## 项目结构
 
+目录级总览（文件级说明见各目录的 README）：
+
 ```
 xiehaoyu-agent/
-├── agent/                          # LangGraph Agent 编排
-│   ├── README.md                   # 本模块详解（状态机 / 工具契约 / SSE 事件）
-│   ├── __init__.py
-│   ├── graph.py                    # 状态机定义 + stream_run() + _serialize_artifact()
-│   ├── planner.py                  # LLM Planner（输出 JSON 决策）
-│   ├── llm_client.py               # 共享 OpenAI 客户端工厂（DeepSeek）
-│   ├── sanitize.py                 # 输入清洗（prompt 注入检测与剥离）
-│   └── tools/
-│       ├── __init__.py
-│       ├── introduce_me.py         # RAG 个人知识库检索问答
-│       ├── query_data.py           # Text2SQL + 安全校验 + 失败重试
-│       ├── visualize.py            # 自动可视化（5 种图表类型）
-│       └── explain_result.py       # LLM 结果解读
-├── backend/                        # FastAPI 后端
-│   ├── README.md                   # 本模块详解（API / 限流 / SSE 推送）
-│   ├── requirements.txt            # fastapi, uvicorn（含根目录核心依赖）
-│   └── app/
-│       ├── __init__.py
-│       ├── main.py                 # FastAPI 入口（CORS, 路由注册）
-│       ├── deps/
-│       │   ├── __init__.py
-│       │   └── rate_limit.py       # 内存限流（按 IP 每小时 + 全局每日上限）
-│       ├── routers/
-│       │   ├── __init__.py
-│       │   └── chat.py             # POST /api/chat（SSE 流式推送）
-│       └── schemas/
-│           ├── __init__.py
-│           └── chat.py             # ChatRequest
-├── frontend/                       # Vue 3 + TypeScript 前端
-│   ├── README.md                   # 本模块详解（组件分层 / 状态管理 / 主题体系）
-│   ├── package.json
-│   ├── vite.config.ts              # Vite 配置（代理 /api → 后端）
-│   ├── tsconfig.json
-│   ├── index.html
-│   └── src/
-│       ├── main.ts                 # Vue 入口（Pinia + Router）
-│       ├── App.vue                 # 根组件（深/浅色主题 + Naive UI 配置）
-│       ├── router/
-│       │   └── index.ts            # /, /chat 路由
-│       ├── stores/
-│       │   └── chat.ts             # 聊天状态 + SSE 流式 + Lottie 动画状态管理
-│       ├── data/
-│       │   └── profile.ts          # 作品集静态数据（关于/经历/项目，改文案只动这里）
-│       ├── utils/
-│       │   ├── sse.ts              # SSE 客户端（fetch + ReadableStream 解析）
-│       │   ├── markdown.ts         # Markdown 渲染（markdown-it + highlight.js）
-│       │   ├── artifact.ts         # tool_end artifact 类型与查找工具
-│       │   ├── quick-questions.ts  # 欢迎屏快捷提问 chips 配置
-│       │   └── tool-constants.ts   # Tool 中文标签、颜色、图表类型映射
-│       ├── composables/
-│       │   ├── useTheme.ts         # 深/浅色主题切换（localStorage 持久化）
-│       │   ├── useScrollSpy.ts     # 滚动锚点高亮跟随
-│       │   ├── useRevealOnScroll.ts # 滚动出现动画指令
-│       │   └── useMediaQuery.ts    # 响应式断点判断
-│       ├── styles/
-│       │   └── global.css          # 全局样式（CSS 变量主题、滚动条、动画）
-│       ├── assets/
-│       │   └── lottie/             # Lottie 动画 JSON 文件（6 个状态）
-│       ├── views/
-│       │   ├── PortfolioView.vue   # 作品集主页（左栏导航 + 关于/经历/项目/聊天入口）
-│       │   └── ChatView.vue        # 聊天布局（响应式：顶栏 + 聊天区 + 全屏模式）
-│       └── components/
-│           ├── portfolio/              # 作品集组件
-│           │   ├── SiteSidebar.vue     # 左栏导航（锚点滚动 + 高亮跟随）
-│           │   ├── AboutSection.vue    # 关于我
-│           │   ├── ExperienceSection.vue # 经历
-│           │   ├── ProjectsSection.vue # 项目
-│           │   ├── ChatSection.vue     # AI 问答 Banner（直达 /chat）
-│           │   ├── SiteFooter.vue      # 页脚
-│           │   ├── SectionHeading.vue  # 区块标题
-│           │   └── MouseSpotlight.vue  # 鼠标流光（radial-gradient 背景层，background-attachment:fixed）
-│           ├── shared/
-│           │   └── AnimatedAvatar.vue  # Lottie 角色动画（6 种状态切换）
-│           ├── result/
-│           │   └── ChartRenderer.vue   # Plotly 图表渲染（figure_json → plotly.js）
-│           └── chat/
-│               ├── ChatWidget.vue      # 聊天组件（消息列表 + 输入框）
-│               ├── ChatMessage.vue     # 消息容器（组合气泡 + 内联结果）
-│               ├── MessageBubble.vue   # 消息气泡（Markdown 渲染 + 流式光标）
-│               ├── InlineResult.vue    # 内联结果展示（图表 + 数据表 + 轨迹）
-│               ├── WelcomeScreen.vue   # 欢迎空状态 + 快捷提问 chips
-│               └── ChatInput.vue       # 输入框（Enter 发送，Shift+Enter 换行）
-├── chatbi/                         # Text2SQL 模块
-│   ├── README.md                   # 本模块详解（数据集 / 安全校验 / few-shot）
-│   ├── __init__.py
-│   ├── schema.py                   # 9 张 Olist 表完整 schema 描述
-│   ├── few_shots.py                # 10 组 (问题, SQL) few-shot 示例
-│   ├── validator.py                # SQL 安全校验（sqlparse + 黑名单）
-│   ├── load_olist.py               # CSV → SQLite 导入脚本
-│   └── data/                       # SQLite 数据库文件（olist.db）
-├── rag/                            # RAG 知识库模块
-│   ├── README.md                   # 本模块详解（切片 / Embedding 双模式 / 检索）
-│   ├── __init__.py                 # 懒加载导出
-│   ├── constants.py                # 共享常量 + Embedding 双模式工厂（智谱 API / 本地 BGE）
-│   ├── ingest.py                   # 语料切片 + 向量入库
-│   ├── retriever.py                # Chroma top-k 检索封装（支持缓存失效）
-│   └── data/
-│       └── chroma/                 # Chroma 持久化向量库
-├── prompts/                        # LLM Prompt 模板
-│   ├── README.md                   # 本目录详解（版本头 / 结构解析约定）
-│   ├── system_persona.md           # Agent 核心人设（第一人称 + 回答风格 + 知识库说明 + 边界）
-│   ├── planner.md                  # Planner 决策 prompt（工具选择 + 规则 + 边界情况）
-│   ├── introduce_me.md             # RAG 回答 prompt（检索片段 + 格式约束）
-│   ├── text2sql.md                 # Text2SQL 模板（schema + few-shot + 质量规范 + 反面示例）
-│   └── explain.md                  # 数据解读模板（洞察要求 + 业务背景 + 正反面示例）
-├── configs/
-│   ├── README.md                   # 配置机制说明（新增配置项流程）
-│   ├── __init__.py
-│   └── settings.py                 # 全局配置（API key, 限流, 温度参数, 启动校验）
-├── deploy/                         # 部署配置
-│   ├── README.md                   # 部署与运维说明
-│   ├── deploy.sh                   # 一键部署脚本（Ubuntu 20.04+）
-│   ├── nginx.conf                  # Nginx 配置（SPA + API 代理 + SSE 禁用缓冲）
-│   └── xiehaoyu-agent.service     # systemd 服务文件
-├── tests/                          # 测试
-│   ├── README.md                   # 测试分层（冒烟 / 单元 / 评测）与运行方式
-│   ├── __init__.py
-│   ├── conftest.py                 # pytest 共享配置
-│   ├── smoke_agent.py              # Agent 全链路冒烟测试（3 类问题）
-│   ├── smoke_introduce_me.py       # RAG 工具测试
-│   ├── smoke_text2sql.py           # Text2SQL 工具测试
-│   ├── smoke_viz_explain.py        # 可视化 + 解读工具测试
-│   ├── eval_text2sql.py            # Text2SQL 基线准确率评测（50 题，需真实 API Key）
-│   ├── test_text2sql.py            # Text2SQL pipeline 单元测试（mock LLM）
-│   ├── test_graph.py               # 状态机 / 路由 / 工具分发单元测试
-│   ├── test_planner.py             # Planner JSON 解析与决策单元测试
-│   ├── test_public_chat.py         # 公开访问 /api/chat + 健康检查测试
-│   ├── test_sanitize_input.py      # 输入清洗（注入检测）单元测试
-│   ├── test_rate_limit.py          # 限流单元测试
-│   ├── test_rag.py                 # RAG 检索质量测试
-│   ├── test_validator.py           # SQL 校验器测试
-│   └── test_visualize.py           # 可视化选图逻辑测试
-├── docs/                           # 设计文档
-│   ├── README.md                   # 文档归档索引
-│   ├── Vue3-FastAPI-重构方案.md    # 重构方案设计文档
-│   ├── 代码审查/                    # 代码审查记录
-│   └── 形象整合方案/                # 角色形象 Lottie 动画整合方案
-├── data/                           # 数据文件
-│   ├── olist数据集/                 # Kaggle Olist CSV 源文件
-│   └── 知识库/                      # 个人知识库（简历/自我介绍/常见问题/项目/工作经历）
-├── requirements.txt                # Python 核心依赖
-├── requirements.lock               # 锁定依赖版本（pip freeze）
-├── README.md                       # 本文件
-├── overview.md                     # 项目概述与实施计划
-├── .env.example                    # 环境变量模板
-├── .gitignore                      # Git 忽略规则
-└── LICENSE                         # MIT
+├── agent/          # LangGraph Agent 编排：状态机、Planner、4 个工具、输入清洗 → agent/README.md
+├── backend/        # FastAPI 后端：/api/chat（SSE）、/api/sessions、限流、会话持久化 → backend/README.md
+├── frontend/       # Vue 3 + TS 前端：作品集主页 + 全屏聊天页 → frontend/README.md
+├── chatbi/         # Text2SQL 数据底座：schema / few-shot / SQL 校验器 → chatbi/README.md
+├── rag/            # RAG 知识库：切片、Embedding 双模式、检索 → rag/README.md
+├── prompts/        # LLM Prompt 模板（版本头约定）→ prompts/README.md
+├── configs/        # 全局配置（.env 读取 + 启动校验）→ configs/README.md
+├── deploy/         # 部署：deploy.sh / nginx.conf / systemd → deploy/README.md
+├── tests/          # 三层测试：冒烟 / 单元 / 评测 → tests/README.md
+├── docs/           # 过程文档归档（reviews / design / plans / references）→ docs/README.md
+├── data/           # 知识库源文件与 Olist 原始数据（不入库的生产数据见 deploy/README「数据初始化」）
+├── requirements.lock  # 锁定依赖版本（部署/CI 使用）
+└── overview.md     # 项目概述与完整迭代时间线
 ```
 
 ## 核心工具（Tools）
@@ -261,10 +129,11 @@ xiehaoyu-agent/
 
 ## API 文档
 
-- `POST /api/chat`：SSE 流式接口，逐节点推送 `planner_decision` / `tool_end` / `final_answer` 事件，`data: [DONE]` 结束
-- `GET /api/health` / `GET /api/health/ready`：存活 / 就绪检查
+- `POST /api/chat`：SSE 流式接口，逐节点推送 `planner_decision` / `tool_end` / `final_answer` 事件，`data: [DONE]` 结束；携带 `X-User-Id` 头时启用会话记忆（注入历史 + 落库 + 后台摘要/标题）
+- `/api/sessions` 系列（6 个端点，需 `X-User-Id`）：会话创建 / 列表 / 搜索 / 回放 / 重命名 / 删除；写端点独立限流（默认 120 次/时）
+- `GET /api/health` / `GET /api/health/ready`：存活检查 / 就绪检查（含 DeepSeek API 探活，60s 缓存）
 
-事件格式示例、限流规则、心跳与断连处理：见 [backend/README.md](backend/README.md)。
+事件格式示例、限流规则、心跳与断连处理、会话回放协议：见 [backend/README.md](backend/README.md)。
 
 ## 快速开始
 
@@ -311,6 +180,9 @@ sudo ./deploy.sh                     # 或 sudo ./deploy.sh your-domain.com（�
 | `DEEPSEEK_MODEL`       | `deepseek-v4-flash`                    | 模型名称                                                     |
 | `IP_HOURLY_QUOTA`      | `20`                                   | 每 IP 每小时提问次数上限                                     |
 | `GLOBAL_DAILY_QUOTA`   | `200`                                  | 全站每日提问总次数上限                                       |
+| `SESSIONS_IP_HOURLY_QUOTA` | `120`                              | 会话写操作（创建/重命名/删除）每 IP 每小时上限               |
+| `SESSIONS_DB_PATH`     | `data/sessions.db`                     | 会话存储 SQLite 文件路径                                     |
+| `SESSIONS_IP_HOURLY_QUOTA` | `120`                              | 会话写端点（创建/改名/删除）每 IP 每小时上限                 |
 | `CORS_ORIGINS`         | `http://localhost:5173`                | 允许的前端地址（逗号分隔）                                   |
 | `MAX_AGENT_STEPS`      | `5`                                    | Agent 最大推理步数                                           |
 | `SQL_RETRY_MAX`        | `3`                                    | SQL 失败最大重试次数                                         |
@@ -322,6 +194,13 @@ sudo ./deploy.sh                     # 或 sudo ./deploy.sh your-domain.com（�
 | `EMBED_API_BASE`       | `https://open.bigmodel.cn/api/paas/v4` | Embedding API 地址                                           |
 | `EMBED_MODEL_NAME`     | `embedding-3`                          | Embedding 模型名称                                           |
 | `EMBED_DIMENSIONS`     | `1024`                                 | 向量维度（256/512/1024/2048，切换后须重建知识库）            |
+| `MEMORY_RECENT_TURNS` | `5` | 上下文携带的最近轮数 |
+| `MEMORY_SUMMARY_TRIGGER_TURNS` | `10` | 触发摘要的最小总轮数 |
+| `MEMORY_SUMMARY_MIN_NEW_TURNS` | `3` | 距上次摘要的最小新增轮数 |
+| `MEMORY_MAX_SESSIONS_PER_USER` | `50` | 单用户会话上限 |
+| `MEMORY_MAX_AGE_DAYS` | `30` | 会话过期天数 |
+| `MEMORY_CLEANUP_INTERVAL_HOURS` | `6` | 清理任务间隔 |
+| `SUMMARIZER_TEMPERATURE` | `0.3` | 摘要 LLM 温度 |
 
 ## 编码规范
 
@@ -364,29 +243,15 @@ pytest tests/ -v
 
 ## 时间线
 
+完整迭代记录见 [overview.md](overview.md)（单一事实源），此处仅列近期里程碑：
+
 | 日期       | 里程碑                                                                                        |
 | ---------- | --------------------------------------------------------------------------------------------- |
-| 2026-07-21 | 立项，方案确定                                                                                |
-| 2026-07-22 | Day 1-2: 数据准备 + Text2SQL                                                                  |
-| 2026-07-22 | Day 3-4: Visualize/Explain + RAG                                                              |
-| 2026-07-22 | Day 5: LangGraph Agent 编排                                                                   |
-| 2026-07-23 | Day 6: Streamlit UI + 优化                                                                    |
-| 2026-07-24 | Day 7-8: Vue 3 + FastAPI 重构 + 代码审查                                                      |
-| 2026-07-25 | Day 9: 部署配置 + 形象整合方案 + 项目审查                                                     |
-| 2026-07-25 | MVP 达成 ✓                                                                                   |
-| 2026-07-27 | 知识库改造 v1: 重构为求职导向的 5 分类 21 文件 + 向量库重建                                   |
-| 2026-07-28 | Prompt 优化: 提取 planner/introduce_me 到文件 + text2sql/explain 增强 + RAG 代码重构          |
-| 2026-07-29 | 前端深浅色主题系统：CSS 变量体系 + useTheme composable + Naive UI 动态切换                    |
-| 2026-07-29 | MouseSpotlight 重写：background-attachment:fixed 方案，滚动时光斑正确跟随                     |
-| 2026-07-29 | 前端组件主题适配：消除全部硬编码颜色，SectionHeading 移动端响应式可见                         |
-| 2026-08-02 | 全屏聊天页 /chat 重写 + 聊天组件全链路深色适配                                                |
-| 2026-08-03 | 清理重构遗留：去 JWT、Streamlit 旧应用公开化、限流空桶回收                                    |
-| 2026-08-04 | Embedding 双模式改造：智谱 embedding-3 API 优先，本地 BGE 降级兜底                            |
-| 2026-08-04 | 安全审查整改 + requirements.lock 锁定依赖版本                                                 |
-| 2026-08-05 | 聊天助手体验优化：WelcomeScreen、代码块复制、回到底部、停止生成重试、错误分类、移动端适配     |
-| 2026-08-05 | 提示词体系全面优化；ChatMessage 拆分为 MessageBubble + InlineResult                           |
-| 2026-08-06 | 移除 Streamlit UI 残留（app.py + ui/）；planner 健壮性修复（空响应 fallback、裸控制字符转义） |
-| 2026-08-06 | Text2SQL 评测优化：50 题基线 96%（48/50），EASY 100% / MEDIUM 100% / HARD 80%；prompt v1.5、few-shot 扩至 10 组 |
+| 2026-07-25 | MVP 达成（9 天：数据准备 → Text2SQL → RAG → Agent 编排 → Vue3+FastAPI → 部署）                |
+| 2026-08-05 | 提示词体系全面优化；聊天助手体验优化 12 项                                                    |
+| 2026-08-06 | 对话记忆持久化：SQLite 会话存储 + 触发式摘要 + 记忆注入 + 会话侧栏                            |
+| 2026-08-08 | 全项目审查（[808 报告](docs/reviews/2026-08-08-审查报告.md)）+ 当日整改：planner 解析回归、XFF 限流绕过、SQL 执行护栏、LLM 全链路异步化、中文注入模式、SSE 重试逻辑、知识库联系方式脱敏等 13 项 |
+| 2026-08-08 | 评测集去泄漏：8 道与 few-shot 重叠题全部换题，无泄漏基线 96%（48/50），EASY 100% / MEDIUM 95% / HARD 90%；prompt v1.5.1 |
 
 ## 后续迭代
 
@@ -406,7 +271,7 @@ pytest tests/ -v
 **要点**：
 
 - 设计并实现多 Tool Agent 编排架构（介绍本人 / Text2SQL 查数 / 自动可视化 / 结果解读），基于 LangGraph 状态机驱动 LLM 自主规划调用链，最多 5 轮循环推理
-- Text2SQL 引擎：完整 schema + 10 组 few-shot prompt + sqlparse 语法校验 + 执行失败反馈自动重写（最多 3 轮），Olist 电商数据集（9 表关联，99441 行订单）；50 题基线准确率 96%（EASY 100% / MEDIUM 100% / HARD 80%）
+- Text2SQL 引擎：完整 schema + 10 组 few-shot prompt + sqlparse 语法校验 + 执行护栏（只读连接 / 语句超时 / 行数上限 / 禁递归 CTE）+ 失败反馈自动重写（最多 3 轮），Olist 电商数据集（9 表关联，99441 行订单）；50 题无泄漏基线准确率 96%（EASY 100% / MEDIUM 95% / HARD 90%，评测集与 few-shot 零重叠）
 - 构建 RAG 个人知识检索模块（BGE-large-zh-v1.5 嵌入 + ChromaDB），支持简历/项目文档热更新，回答附带来源引用
 - 前后端分离架构：FastAPI SSE 流式推送 + Vue 3 SPA（深/浅色主题）+ 按 IP 限流 + 6 种 Lottie 角色动画
 - 全链路公网部署（腾讯云轻量服务器），公开访问 + 按 IP 限流 + 全局日上限

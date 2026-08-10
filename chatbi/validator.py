@@ -19,6 +19,13 @@ _FORBIDDEN = re.compile(
     re.IGNORECASE,
 )
 
+# 函数/表值形式的黑名单：`\bPRAGMA\b` 不匹配 `pragma_table_info`（下划线是
+# 词字符），函数形式需单独拦截（808 审查 H4/L9）。
+_FORBIDDEN_FUNCS = re.compile(
+    r"\b(?:load_extension|readfile|writefile|pragma_\w+)\s*\(",
+    re.IGNORECASE,
+)
+
 # Regex for CTE-style statements that sqlparse reports as UNKNOWN.
 # Matches "WITH ... SELECT" across multiple lines.
 _CTE_SELECT_RE = re.compile(r"^\s*(WITH\b.+?\bSELECT\b)", re.IGNORECASE | re.DOTALL)
@@ -94,5 +101,13 @@ def validate(sql: str) -> str:
     s_check = _strip_string_literals(s_no_comments)
     if _FORBIDDEN.search(s_check):
         raise SQLValidationError("contains forbidden keyword")
+
+    # 808 审查 H4：递归 CTE 无终止条件时可无限计算（DoS），一律拒绝
+    if re.search(r"\bRECURSIVE\b", s_check, re.IGNORECASE):
+        raise SQLValidationError("recursive CTE is not allowed")
+
+    # 函数形式黑名单（pragma_*/load_extension/readfile/writefile）
+    if _FORBIDDEN_FUNCS.search(s_check):
+        raise SQLValidationError("contains forbidden function")
 
     return s

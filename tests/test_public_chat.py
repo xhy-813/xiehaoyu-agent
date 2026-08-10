@@ -30,7 +30,7 @@ def _clean_state():
     _daily_state["count"] = 0
 
 
-def _fake_stream(question: str):
+def _fake_stream(question: str, history_text: str = ""):
     async def gen():
         yield {"type": "final_answer", "node": "finalize", "data": {"answer": "ok"}}
     return gen()
@@ -75,3 +75,44 @@ class TestHealth:
         resp = client.get("/api/health")
         assert resp.status_code == 200
         assert resp.json() == {"status": "ok"}
+
+
+class TestReadyProbe:
+    """808 审查 M14：ready 端点探活 DeepSeek（mock 客户端，60s 缓存）。"""
+
+    @pytest.fixture(autouse=True)
+    def _reset_probe(self):
+        from backend.app import main as main_mod
+
+        main_mod._ready_probe["ts"] = 0.0
+        main_mod._ready_probe["ok"] = False
+        yield
+        main_mod._ready_probe["ts"] = 0.0
+        main_mod._ready_probe["ok"] = False
+
+    def test_ready_ok_when_api_reachable(self, monkeypatch):
+        from unittest.mock import MagicMock
+
+        monkeypatch.setattr("backend.app.main.get_client", lambda: MagicMock())
+        resp = client.get("/api/health/ready")
+        assert resp.status_code == 200
+        assert resp.json() == {"status": "ok"}
+
+    def test_ready_503_when_api_unreachable(self, monkeypatch):
+        from unittest.mock import MagicMock
+
+        bad = MagicMock()
+        bad.models.list.side_effect = ConnectionError("api down")
+        monkeypatch.setattr("backend.app.main.get_client", lambda: bad)
+        resp = client.get("/api/health/ready")
+        assert resp.status_code == 503
+        assert "unreachable" in resp.json()["reason"]
+
+    def test_probe_result_cached_60s(self, monkeypatch):
+        from unittest.mock import MagicMock
+
+        mock_client = MagicMock()
+        monkeypatch.setattr("backend.app.main.get_client", lambda: mock_client)
+        client.get("/api/health/ready")
+        client.get("/api/health/ready")
+        assert mock_client.models.list.call_count == 1  # 第二次命中缓存

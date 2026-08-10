@@ -59,6 +59,19 @@ class Hit:
         self.similarity = round(1.0 - self.distance, 4)
 
 
+@dataclass
+class RetrievalResult:
+    """检索结果 + 健康标志（808 审查 M9）。
+
+    ``degraded=True`` 表示检索基础设施故障（Chroma 损坏、embedding API 异常等），
+    与"正常检索但无匹配"（degraded=False, hits=[]）区分开——前者应让 LLM
+    诚实说明不可用，而不是凭人设硬答。
+    """
+
+    hits: list[Hit]
+    degraded: bool = False
+
+
 # ── Collection (lazy, cached) ─────────────────────────────
 
 
@@ -96,27 +109,17 @@ def count(db_path: Path | None = None) -> int:
 # ── Retrieve ──────────────────────────────────────────────
 
 
-def retrieve(
+def retrieve_result(
     question: str,
     top_k: int = 5,
     db_path: Path | None = None,
     min_similarity: float = DEFAULT_MIN_SIMILARITY,
-) -> list[Hit]:
-    """Retrieve top-k chunks from the personal knowledge base.
+) -> RetrievalResult:
+    """Retrieve top-k chunks, with an explicit degradation flag (808 审查 M9).
 
-    Args:
-        question: Natural-language query (will be embedded with BGE-large-zh-v1.5).
-        top_k: Number of chunks to return.
-        db_path: Path to ChromaDB persistence directory.  Defaults to
-            ``rag/data/chroma/`` relative to the project root.
-        min_similarity: Minimum cosine similarity (0–1) to include a result.
-            Results below this threshold are filtered out.  Default: 0.3.
-
-    Returns:
-        List of ``Hit``, ordered by relevance (best first).  Returns an empty
-        list if the collection is empty or missing.  If the cached collection
-        handle is stale (``rag.ingest`` rebuilt the collection in another
-        process), the cache is refreshed and the query retried once.
+    Same retrieval logic as ``retrieve()``, but infrastructure failures
+    (collection missing, Chroma error, embedding API down) return
+    ``RetrievalResult(hits=[], degraded=True)`` instead of a bare empty list.
     """
     db = str(db_path or DEFAULT_DB)
 
@@ -124,7 +127,7 @@ def retrieve(
         col = _get_collection(db)
     except Exception:
         logger.exception("Failed to get Chroma collection at %s", db)
-        return []
+        return RetrievalResult([], degraded=True)
 
     try:
         res = col.query(query_texts=[question], n_results=top_k)
@@ -137,10 +140,10 @@ def retrieve(
             res = _get_collection(db).query(query_texts=[question], n_results=top_k)
         except Exception:
             logger.exception("Chroma query failed for: %s", question[:200])
-            return []
+            return RetrievalResult([], degraded=True)
     except Exception:
         logger.exception("Chroma query failed for: %s", question[:200])
-        return []
+        return RetrievalResult([], degraded=True)
 
     docs = res.get("documents", [[]])[0]
     metas = res.get("metadatas", [[]])[0]
@@ -170,4 +173,20 @@ def retrieve(
             min_similarity,
         )
 
-    return hits
+    return RetrievalResult(hits, degraded=False)
+
+
+def retrieve(
+    question: str,
+    top_k: int = 5,
+    db_path: Path | None = None,
+    min_similarity: float = DEFAULT_MIN_SIMILARITY,
+) -> list[Hit]:
+    """Retrieve top-k chunks from the personal knowledge base.
+
+    兼容包装：只返回命中列表（丢弃 degraded 标志）。新调用方请使用
+    ``retrieve_result()`` 以区分"基础设施故障"与"无匹配"。
+    """
+    return retrieve_result(
+        question, top_k=top_k, db_path=db_path, min_similarity=min_similarity
+    ).hits

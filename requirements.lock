@@ -33,6 +33,3 @@ plotly==6.9.0
 
 # Config
 python-dotenv==1.2.2
-
-# Streamlit UI (可选)
-streamlit==1.60.0

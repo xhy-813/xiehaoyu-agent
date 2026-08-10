@@ -9,15 +9,16 @@
 
 from __future__ import annotations
 
+import asyncio
 from dataclasses import dataclass
 from pathlib import Path
 
-from openai import OpenAI
+from openai import AsyncOpenAI
 
-from agent.llm_client import get_client
+from agent.llm_client import alogged_chat_create, get_async_client
 from agent.sanitize import sanitize_input
 from configs.settings import settings
-from rag.retriever import Hit, retrieve
+from rag.retriever import Hit, RetrievalResult, retrieve_result
 
 
 PERSONA_PATH = Path(__file__).resolve().parents[2] / "prompts" / "system_persona.md"
@@ -29,6 +30,7 @@ class IntroduceResult:
     answer: str
     citations: list[dict]  # [{source, heading, distance, similarity}]
     hits: list[Hit]
+    degraded: bool = False  # 检索基础设施故障（808 审查 M9）
 
 
 # Self-introduction keywords used to decide whether to inject the
@@ -54,14 +56,21 @@ def _format_context(hits: list[Hit]) -> str:
     return "\n\n---\n\n".join(parts)
 
 
-def introduce_me(question: str, top_k: int = 10) -> IntroduceResult:
-    """RAG-based self-introduction.
+async def introduce_me_async(
+    question: str, top_k: int = 10, client: AsyncOpenAI | None = None
+) -> IntroduceResult:
+    """RAG-based self-introduction（异步版，808 审查 M1）。
 
     Retrieves top_k relevant chunks from the personal knowledge base,
     then asks the LLM to synthesize a natural, first-person answer.
+    检索（Chroma + embedding API）为同步阻塞调用，经 to_thread 隔离；
+    LLM 调用为真异步——任务取消时 HTTP 请求即中止。
     """
     safe_question = sanitize_input(question)
-    hits = retrieve(safe_question, top_k=top_k)
+    retrieval: RetrievalResult = await asyncio.to_thread(
+        retrieve_result, safe_question, top_k
+    )
+    hits = retrieval.hits
     persona = PERSONA_PATH.read_text(encoding="utf-8")
     context = _format_context(hits) or "(暂无检索片段)"
 
@@ -76,26 +85,48 @@ def introduce_me(question: str, top_k: int = 10) -> IntroduceResult:
         no_template = rag_template.split("【自我介绍模板】")[0].strip()
         user_prompt = no_template.format(context=context, question=safe_question)
 
-    client = get_client()
-    try:
-        resp = client.chat.completions.create(
-            model=settings.deepseek_model,
-            messages=[
-                {"role": "system", "content": persona},
-                {"role": "user", "content": user_prompt},
-            ],
-            temperature=settings.rag_temperature,
+    # 808 审查 M9：检索基础设施故障时明确指示诚实说明，防止凭人设编造经历
+    if retrieval.degraded:
+        user_prompt += (
+            "\n\n【重要】知识库检索当前不可用（基础设施故障，非无匹配）。"
+            "请诚实说明知识库暂时无法访问，建议对方稍后再试；"
+            "不要凭印象编造任何经历、数据或细节。"
         )
-        answer = (resp.choices[0].message.content or "").strip()
-    except Exception as exc:
-        raise RuntimeError(f"introduce_me LLM call failed: {exc}") from exc
-    citations = [
-        {
-            "source": h.source,
-            "heading": h.heading,
-            "distance": round(h.distance, 4),
-            "similarity": h.similarity,
-        }
-        for h in hits
-    ]
-    return IntroduceResult(answer=answer, citations=citations, hits=hits)
+
+    owns_client = client is None
+    client = client or get_async_client()
+    try:
+        try:
+            resp = await alogged_chat_create(
+                client,
+                model=settings.deepseek_model,
+                messages=[
+                    {"role": "system", "content": persona},
+                    {"role": "user", "content": user_prompt},
+                ],
+                temperature=settings.rag_temperature,
+                caller="introduce_me",
+            )
+            answer = (resp.choices[0].message.content or "").strip()
+        except Exception as exc:
+            raise RuntimeError(f"introduce_me LLM call failed: {exc}") from exc
+        citations = [
+            {
+                "source": h.source,
+                "heading": h.heading,
+                "distance": round(h.distance, 4),
+                "similarity": h.similarity,
+            }
+            for h in hits
+        ]
+        return IntroduceResult(
+            answer=answer, citations=citations, hits=hits, degraded=retrieval.degraded
+        )
+    finally:
+        if owns_client:
+            await client.close()  # 自建客户端随用随关
+
+
+def introduce_me(question: str, top_k: int = 10) -> IntroduceResult:
+    """同步门面（smoke 脚本/离线测试用）。异步链路请直接 await introduce_me_async。"""
+    return asyncio.run(introduce_me_async(question, top_k))

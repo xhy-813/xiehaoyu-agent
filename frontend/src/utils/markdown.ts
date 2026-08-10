@@ -1,8 +1,23 @@
 /** Shared MarkdownIt instance.  Created once at module level so every
  * ChatMessage component reuses the same parser (including highlight.js). */
 import MarkdownIt from 'markdown-it'
-import hljs from 'highlight.js'
+// 808 审查 M7：全量 highlight.js（~190 种语言）→ 核心库 + 按需注册，
+// 本产品的 LLM 输出语言集中（sql/python/json/bash/ts/md）
+import hljs from 'highlight.js/lib/core'
+import hljsSql from 'highlight.js/lib/languages/sql'
+import hljsPython from 'highlight.js/lib/languages/python'
+import hljsJson from 'highlight.js/lib/languages/json'
+import hljsBash from 'highlight.js/lib/languages/bash'
+import hljsTs from 'highlight.js/lib/languages/typescript'
+import hljsMd from 'highlight.js/lib/languages/markdown'
 import 'highlight.js/styles/github-dark.css'
+
+hljs.registerLanguage('sql', hljsSql)
+hljs.registerLanguage('python', hljsPython)
+hljs.registerLanguage('json', hljsJson)
+hljs.registerLanguage('bash', hljsBash)
+hljs.registerLanguage('typescript', hljsTs)
+hljs.registerLanguage('markdown', hljsMd)
 
 const md: MarkdownIt = new MarkdownIt({
   html: false,

@@ -65,12 +65,12 @@ backend/
 
 #### 修改的现有文件
 
-1. **[configs/settings.py](configs/settings.py)** — 新增 3 个配置项:
+1. **[configs/settings.py](../../configs/settings.py)** — 新增 3 个配置项:
    - `jwt_secret: str` (JWT 签名密钥)
    - `jwt_expire_hours: int = 24`
    - `cors_origins: str` (前端地址，开发环境 localhost:5173)
 
-2. **[agent/graph.py](agent/graph.py)** — 新增:
+2. **[agent/graph.py](../../agent/graph.py)** — 新增:
    - `stream_run()` 异步生成器：使用 `app.astream()` 流式执行 agent，每步 yield 一个事件
    - `_serialize_artifact()` 函数: DataFrame → `df_json` + `df_shape` + `df_columns`, Plotly Figure → `figure_json`
 
@@ -213,9 +213,9 @@ cd frontend && npm install && npm run dev
 8. 冒烟测试
 
 **部署文件**:
-- [deploy/deploy.sh](deploy/deploy.sh) — 一键部署脚本
-- [deploy/nginx.conf](deploy/nginx.conf) — Nginx 配置
-- [deploy/xiehaoyu-agent.service](deploy/xiehaoyu-agent.service) — systemd 服务文件
+- [deploy/deploy.sh](../../deploy/deploy.sh) — 一键部署脚本
+- [deploy/nginx.conf](../../deploy/nginx.conf) — Nginx 配置
+- [deploy/xiehaoyu-agent.service](../../deploy/xiehaoyu-agent.service) — systemd 服务文件
 
 ## 可复用现有代码
 

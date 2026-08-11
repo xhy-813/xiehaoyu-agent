@@ -36,8 +36,10 @@ export const profile = {
   ],
   email: 'xiehaoyu12138@163.com',
   wechat: 'xhy18711807395',
-  repo: 'https://gitee.com/xiehaoyu12138/xiehaoyu-agent/tree/main/',
-  repoLabel: '代码仓库',
+  // 侧栏社交图标指向各平台主页；项目仓库地址在 projects[0].link
+  gitee: 'https://gitee.com/xiehaoyu12138',
+  github: 'https://github.com/xhy-813',
+  csdn: 'https://blog.csdn.net/2301_80330510?type=blog',
 }
 
 export const skillsFlat: string[] = [

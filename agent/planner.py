@@ -183,6 +183,10 @@ async def plan(
             messages=messages,
             temperature=settings.planner_temperature,
             caller="planner",
+            # JSON 模式：API 层强制合法 JSON 输出，从根上消除格式漂移
+            # （2026-08-11 线上日志：模型直接写 587 token 正确回答但未套
+            # JSON 外衣，被当报错丢弃）。planner.md 已含「JSON」字样满足前提。
+            response_format={"type": "json_object"},
         )
         raw = resp.choices[0].message.content or ""
 
@@ -218,6 +222,19 @@ async def plan(
                 "action": "finalize",
                 "answer": "抱歉，我暂时无法处理这个请求，请稍后再试。",
             }
+
+        # 协议违例兜底：模型直接输出最终回答而未套 JSON 外衣（全文无 "{"）。
+        # trace 非空时这段长文几乎只能是 finalize 答案——直接采用而非报错丢弃；
+        # trace 为空时维持抛错（散文回答可能绕过了必要的工具调用，有幻觉风险），
+        # 由 graph 的异常兜底统一道歉。
+        if "{" not in raw:
+            if trace:
+                logger.warning(
+                    "Planner returned prose instead of JSON, treating as finalize: %s",
+                    raw[:100],
+                )
+                return {"action": "finalize", "answer": raw.strip()}
+            raise ValueError(f"Planner output is not valid JSON: {raw[:200]}")
 
         return _extract_json(raw)
     finally:

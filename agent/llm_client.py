@@ -25,6 +25,11 @@ logger = logging.getLogger(__name__)
 # ConnectError，后台标题生成报错）。若未来 base_url 切到海外 API 需改回。
 
 
+# LLM 调用超时 60s（2026-08-11 线上日志：API 繁忙期单次调用 20-50s 属正常
+# 波动，30s 阈值恰好卡在波动区间里——超时杀掉重发既双倍计费又把等待翻倍）。
+_LLM_TIMEOUT_S = 60.0
+
+
 def get_client() -> OpenAI:
     """Return a configured OpenAI client pointed at DeepSeek.
 
@@ -36,9 +41,9 @@ def get_client() -> OpenAI:
     return OpenAI(
         api_key=settings.deepseek_api_key,
         base_url=settings.deepseek_base_url,
-        timeout=30.0,
+        timeout=_LLM_TIMEOUT_S,
         max_retries=1,
-        http_client=httpx.Client(trust_env=False, timeout=30.0),
+        http_client=httpx.Client(trust_env=False, timeout=_LLM_TIMEOUT_S),
     )
 
 
@@ -49,9 +54,9 @@ def get_async_client() -> AsyncOpenAI:
     return AsyncOpenAI(
         api_key=settings.deepseek_api_key,
         base_url=settings.deepseek_base_url,
-        timeout=30.0,
+        timeout=_LLM_TIMEOUT_S,
         max_retries=1,
-        http_client=httpx.AsyncClient(trust_env=False, timeout=30.0),
+        http_client=httpx.AsyncClient(trust_env=False, timeout=_LLM_TIMEOUT_S),
     )
 
 

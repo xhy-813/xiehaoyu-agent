@@ -3,6 +3,10 @@
 # 生成命令: pip freeze | grep -E "..."
 # 生成日期: 2026-08-04
 # Python:    3.11
+# 覆盖范围:  直接依赖（传递依赖由 pip 现场解析，均为小包）。
+#           本地 BGE embedding 兜底（sentence-transformers + torch，
+#           ~2.5GB）已拆至 requirements-embed-local.txt，服务器走
+#           智谱 API（EMBED_API_KEY）时无需安装。
 # ============================================================
 
 # Web & API
@@ -24,7 +28,7 @@ httpx==0.28.1
 
 # RAG / Vector DB
 chromadb==1.5.9
-sentence-transformers==5.6.0
+# sentence-transformers → requirements-embed-local.txt（本地 BGE 兜底，可选）
 
 # Data & SQL
 SQLAlchemy==2.0.51

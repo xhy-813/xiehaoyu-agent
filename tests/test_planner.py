@@ -205,3 +205,40 @@ class TestPlan:
             result = asyncio.run(plan("test", []))
             assert result["action"] == "finalize"
             mock_get_async_client.assert_called_once()
+
+    # ── JSON 模式 + 散文兜底（2026-08-11 线上日志修复）──
+
+    def test_json_mode_enabled(self, mock_client):
+        """planner 调用必须带 response_format=json_object（API 层强制合法 JSON）。"""
+        mock_client.chat.completions.create.return_value = MagicMock(
+            choices=[MagicMock(message=MagicMock(content='{"action": "finalize", "answer": "ok"}'))]
+        )
+        asyncio.run(plan("test", [], client=mock_client))
+        kwargs = mock_client.chat.completions.create.call_args.kwargs
+        assert kwargs.get("response_format") == {"type": "json_object"}
+
+    def test_prose_fallback_with_trace(self, mock_client):
+        """工具已执行后模型直接输出散文回答（未套 JSON）→ 当作 finalize 采用，
+        不丢弃正确答案（2026-08-11 线上日志场景回归）。"""
+        prose = "已为你生成 GMV 趋势图，整体呈明显上升趋势：2017 年 5 月达到约 50.6 万雷亚尔的高点。"
+        mock_client.chat.completions.create.return_value = MagicMock(
+            choices=[MagicMock(message=MagicMock(content=prose))]
+        )
+        trace = [
+            {
+                "tool": "query_data",
+                "args": {"question": "GMV 月度趋势"},
+                "summary": "SQL: SELECT ...\n行数: 24\n前10行:\n...",
+            }
+        ]
+        result = asyncio.run(plan("GMV 趋势如何", trace, client=mock_client))
+        assert result["action"] == "finalize"
+        assert result["answer"] == prose
+
+    def test_prose_without_trace_raises(self, mock_client):
+        """trace 为空时散文输出仍抛错——此时回答可能绕过必要的工具调用（幻觉风险）。"""
+        mock_client.chat.completions.create.return_value = MagicMock(
+            choices=[MagicMock(message=MagicMock(content="订单量是十万个。"))]
+        )
+        with pytest.raises(ValueError, match="not valid JSON"):
+            asyncio.run(plan("订单量是多少", [], client=mock_client))

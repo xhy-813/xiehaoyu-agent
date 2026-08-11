@@ -3,7 +3,8 @@ langchain-core>=0.1.40
 openai>=1.20
 httpx>=0.28
 chromadb>=0.4.24
-sentence-transformers>=2.5
+# 本地 BGE embedding 兜底（可选）：见 requirements-embed-local.txt（含 torch CPU 版锁定）
+# sentence-transformers>=2.5
 sqlparse>=0.4
 sqlalchemy>=2.0
 pandas>=2.1

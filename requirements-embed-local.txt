@@ -1,0 +1,23 @@
+# ============================================================
+# 本地 BGE embedding 兜底依赖（可选，服务器默认不安装）
+#
+# 何时需要：未配置 EMBED_API_KEY（智谱 API 不可用/欠费）时，rag 模块
+# 降级为本地 BGE-large-zh-v1.5（首次使用自动下载 ~1.3GB 模型到 HF 缓存，
+# 约占 1.3GB 内存）。
+#
+# 为何不随主依赖安装：sentence-transformers 的传递依赖 torch 在 Linux 上
+# 默认拉 CUDA 版（连带 nvidia-* 共 ~2.5GB），2C4G 无 GPU 服务器纯属浪费。
+#
+# 安装：
+#   pip install -r requirements-embed-local.txt
+# 若 pin 的小版本在 CPU 索引中缺失，改为装最新 CPU 版即可：
+#   pip install torch --index-url https://download.pytorch.org/whl/cpu
+#   pip install sentence-transformers==5.6.0
+# ============================================================
+
+# torch 锁 CPU 版（+cpu 后缀仅存在于 pytorch 官方 CPU 索引）
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch==2.13.0+cpu
+
+transformers==5.14.1
+sentence-transformers==5.6.0

@@ -142,6 +142,7 @@ xiehaoyu-agent/
 ```bash
 # 后端
 pip install -r backend/requirements.txt   # 已包含根目录核心依赖
+# 可选：不设 EMBED_API_KEY 时用本地 BGE 兜底 → pip install -r requirements-embed-local.txt
 cp .env.example .env                      # 填入 DEEPSEEK_API_KEY
 uvicorn backend.app.main:app --reload
 

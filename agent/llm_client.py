@@ -13,11 +13,16 @@ from __future__ import annotations
 
 import logging
 
+import httpx
 from openai import AsyncOpenAI, OpenAI
 
 from configs.settings import settings
 
 logger = logging.getLogger(__name__)
+
+# trust_env=False：不读系统/环境代理。DeepSeek、智谱均为国内 API，走代理只
+# 引入单点故障（2026-08-10 本地故障：Windows 系统代理残留导致 TLS 建连失败
+# ConnectError，后台标题生成报错）。若未来 base_url 切到海外 API 需改回。
 
 
 def get_client() -> OpenAI:
@@ -33,6 +38,7 @@ def get_client() -> OpenAI:
         base_url=settings.deepseek_base_url,
         timeout=30.0,
         max_retries=1,
+        http_client=httpx.Client(trust_env=False, timeout=30.0),
     )
 
 
@@ -45,6 +51,7 @@ def get_async_client() -> AsyncOpenAI:
         base_url=settings.deepseek_base_url,
         timeout=30.0,
         max_retries=1,
+        http_client=httpx.AsyncClient(trust_env=False, timeout=30.0),
     )
 
 

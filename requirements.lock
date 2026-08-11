@@ -20,6 +20,7 @@ langgraph-sdk==0.4.2
 langchain-core==1.5.0
 langchain-protocol==0.0.18
 openai==2.46.0
+httpx==0.28.1
 
 # RAG / Vector DB
 chromadb==1.5.9

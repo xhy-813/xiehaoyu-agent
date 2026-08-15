@@ -15,6 +15,9 @@ env/
 .env.local
 # SSH 私钥（部署密钥等）
 *.pem
+# SSL 证书与私钥（部署时上传服务器，不入库）
+*.key
+deploy/*_nginx*
 
 # Data & models
 *.db

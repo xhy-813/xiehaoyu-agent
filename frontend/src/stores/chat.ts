@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed, watch } from 'vue'
 import { sseChatStream, SSEStreamError, type Artifact, type SSEChatEvent } from '@/utils/sse'
+import { uuid } from '@/utils/uuid'
 import type { AvatarState } from '@/components/shared/AnimatedAvatar.vue'
 import { useSessionsStore } from './sessions'
 
@@ -119,7 +120,7 @@ export const useChatStore = defineStore('chat', () => {
 
     // 1. Add user message
     const userMsg: ChatMessage = {
-      id: crypto.randomUUID(),
+      id: uuid(),
       role: 'user',
       content: question,
       timestamp: Date.now(),
@@ -128,7 +129,7 @@ export const useChatStore = defineStore('chat', () => {
 
     // 2. Add placeholder assistant message
     const assistantMsg: ChatMessage = {
-      id: crypto.randomUUID(),
+      id: uuid(),
       role: 'assistant',
       content: '',
       timestamp: Date.now(),

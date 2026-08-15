@@ -68,7 +68,7 @@ chmod 640 "$APP_DIR/.env"
 # --- 5. Build frontend ---
 echo "[5/6] 构建前端..."
 if ! command -v node &> /dev/null; then
-    echo "  >>> 错误: 未检测到 Node.js。请先安装 Node.js (>= 18)"
+    echo "  >>> 错误: 未检测到 Node.js。请先安装 Node.js (>= 20.19，vite 8 引擎要求)"
     echo "  >>> 安装方法: https://nodejs.org/ 或 apt install nodejs"
     exit 1
 fi

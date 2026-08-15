@@ -13,6 +13,8 @@ env/
 # Env & secrets
 .env
 .env.local
+# SSH 私钥（部署密钥等）
+*.pem
 
 # Data & models
 *.db

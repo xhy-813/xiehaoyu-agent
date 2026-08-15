@@ -1,0 +1,3 @@
+# 占位文件：git 不跟踪空目录，此文件让 chatbi/data/ 随 clone 存在。
+# 必要原因：systemd unit 的 ReadWritePaths 包含本目录，目录缺失会导致
+# 服务 mount namespace 崩溃循环（226/NAMESPACE）。olist.db 本身被 gitignore，需单独上传。

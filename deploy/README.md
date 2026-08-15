@@ -12,6 +12,8 @@
 
 `deploy.sh` 依次执行：① 安装系统依赖（git/Python/Nginx/certbot）→ ② 克隆或更新代码到 `/srv/xiehaoyu-agent`（Gitee 公开仓，脚本内 `REPO_URL`；git/npm 均以部署用户身份执行，避免 root 触发 git dubious ownership 及所有权混乱）→ ③ 建 venv 装依赖 → ④ 配置 `.env`（不存在则从 `.env.example` 复制并提示填密钥）→ ⑤ 构建前端（`npm install && npm run build`）→ ⑥ 配置 Nginx + systemd + 修正数据目录所有权，可选签发 SSL 证书。
 
+**「部署完成」≠ 后端已就绪**：systemd `Type=simple` 下 `systemctl restart` 不等待进程可用（2026-08-14 首次部署曾在脚本报完成后后端仍在崩溃循环）。每次部署后必须验证：`sudo systemctl is-active xiehaoyu-agent` 为 `active` 且 `curl http://127.0.0.1:8000/api/health/ready` 返回 `{"status":"ok"}`。
+
 默认走国内镜像源加速（腾讯云内网 pip 镜像 + npmmirror），可用环境变量覆盖：`PIP_INDEX_URL`、`NPM_REGISTRY`。
 
 ## 关键配置点
@@ -22,6 +24,8 @@
 - **数据目录所有权**：服务以 `www-data` 运行，脚本会创建 `rag/data/` 并属 `www-data`（该目录被 gitignore 排除，clone 后不存在；Chroma 底层 SQLite WAL 必须可写），并把 `data/` **目录本身** chown 给 www-data（不递归——知识库文件仍属部署用户，`git pull` 更新不受影响）。`chatbi/data/` 无需写：`query_data` 以 `mode=ro` 只读连接打开 olist.db。
 - **SSL 配置保护**：`certbot --nginx` 会把 443 server 块直接写进 `/etc/nginx/sites-available/xiehaoyu-agent`；脚本检测到该文件已含 `ssl_certificate` 时跳过覆盖，防止重跑 deploy.sh 丢 HTTPS。确需更新 Nginx 配置时先备份 SSL 块再手动合并。
 - **依赖可复现**：部署安装 `requirements.lock`（锁定直接依赖版本，传递依赖均为小包由 pip 解析）而非 `requirements.txt`（宽松下限）。本地 BGE 兜底依赖（sentence-transformers + torch，~2.5GB）已拆到根目录 `requirements-embed-local.txt`，走智谱 API 时不装。
+- **Node 版本 ≥20.19**：vite 8 的引擎要求为 `^20.19.0 || >=22.12.0`。推荐 npmmirror 二进制安装（2026-08-14 实际用 v22.20.0）：`curl -fsSL https://npmmirror.com/mirrors/node/latest-v22.x/node-v22.20.0-linux-x64.tar.gz | sudo tar -xz -C /usr/local --strip-components=1`（升级旧版本前先 `sudo rm -rf /usr/local/lib/node_modules`，覆盖解压会导致 npm 文件混杂报错 `Class extends value undefined`）。
+- **package-lock.json 跨平台**：lock 由 Windows 端生成，Linux 服务器上 `npm install` 可能因 npm 已知 bug（npm/cli#4828）跳过平台可选依赖，导致 vite build 崩 `Cannot find module '@rolldown/binding-linux-x64-gnu'`。处置（2026-08-14 决策：维持现状、仅文档备案）：服务器端 `cd frontend && rm -rf node_modules package-lock.json && npm install --registry=https://registry.npmmirror.com` 后重跑 deploy.sh。
 
 ## 数据初始化（首次部署必做）
 
